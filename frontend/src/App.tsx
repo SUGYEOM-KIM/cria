@@ -6,6 +6,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('chat');
   const [messages, setMessages] = useState<string[]>([]);
   const [inputText, setInputText] = useState('');
+  const [selectedModel, setSelectedModel] = useState('llama3');
+  const availableModels = ['llama3', 'mistral', 'gemma', 'phi3'];
 
   const handleSendMessage = () => {
     if (!inputText.trim()) return;
@@ -34,7 +36,7 @@ function App() {
               </div>
             )}
 
-            <div className="chat-input-area">
+            <div className="chat-input-wrapper">
               <input 
                 type="text" 
                 value={inputText}
@@ -43,9 +45,29 @@ function App() {
                 placeholder="Message Cria..."
                 className="chat-input"
               />
-              <button onClick={handleSendMessage} className="chat-submit-btn">
-                Send
-              </button>
+              <div className="chat-input-bottom">
+                <div className="chat-input-actions-left">
+                </div>
+                <div className="chat-input-actions-right">
+                  <select 
+                    value={selectedModel} 
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="model-selector-inline"
+                  >
+                    {availableModels.map((model) => (
+                      <option key={model} value={model}>
+                        {model}
+                      </option>
+                    ))}
+                  </select>
+                  <button onClick={handleSendMessage} className="chat-submit-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="22" y1="2" x2="11" y2="13"></line>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         );

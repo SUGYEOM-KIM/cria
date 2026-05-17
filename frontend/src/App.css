@@ -70,12 +70,17 @@ body {
   padding: 40px;
   overflow-y: auto;
   background-color: #f9f6f0;
+  display: flex;
+  flex-direction: column;
 }
 
 .chat-container {
   display: flex;
   flex-direction: column;
   height: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .home-view {
@@ -121,40 +126,88 @@ body {
   align-self: flex-end;
   max-width: 70%;
   word-break: break-word;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
 }
 
-.chat-input-area {
+.chat-input-wrapper {
   margin-top: auto;
   display: flex;
-  gap: 10px;
-}
-
-.chat-input {
-  flex: 1;
-  padding: 16px;
-  border-radius: 8px;
-  border: 1px solid #e1dacb;
+  flex-direction: column;
+  border-radius: 20px;
+  border: 1px solid #dcd3c1;
   background: #ffffff;
-  color: #2b2722;
-  font-size: 16px;
-  outline: none;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   transition: border-color 0.2s;
 }
 
-.chat-input:focus {
+.chat-input-wrapper:focus-within {
   border-color: #bfae96;
 }
 
+.chat-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #2b2722;
+  font-size: 16px;
+  outline: none;
+  padding: 0 0 24px 0;
+  font-family: inherit;
+}
+
+.chat-input::placeholder {
+  color: #a0978c;
+}
+
+.chat-input-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chat-input-actions-left {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-input-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.model-selector-inline {
+  border: none;
+  background-color: transparent;
+  color: #a0978c;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  padding-right: 16px;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a0978c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right center;
+  background-size: 14px;
+}
+
+.model-selector-inline:hover {
+  color: #706558;
+}
+
 .chat-submit-btn {
-  padding: 0 24px;
-  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   border: none;
   background: #76695b;
   color: #ffffff;
   cursor: pointer;
-  font-size: 16px;
-  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: background 0.2s;
 }
 
