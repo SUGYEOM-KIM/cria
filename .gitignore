@@ -14,3 +14,4 @@ frontend/node_modules/
 *.dylib
 *.test
 *.out
+config.json
