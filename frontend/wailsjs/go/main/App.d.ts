@@ -11,6 +11,8 @@ export function GetOllamaPath():Promise<string>;
 
 export function Greet(arg1:string):Promise<string>;
 
+export function RemoveModel(arg1:string):Promise<string>;
+
 export function SelectFolder():Promise<string>;
 
 export function UpdateOllamaPath(arg1:string):Promise<boolean>;

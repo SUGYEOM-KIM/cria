@@ -1,18 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { GetOllamaPath, UpdateOllamaPath, SelectFolder, DownloadModel } from '../../wailsjs/go/main/App';
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime';
+import { GetOllamaPath, UpdateOllamaPath, SelectFolder, DownloadModel, RemoveModel } from '../../wailsjs/go/main/App';
 
 interface SettingsViewProps {
   availableModels: string[];
   fetchModels: () => Promise<void>;
   popularModels: string[];
+  downloadProgress: Record<string, string>;
+  setDownloadProgress: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  isDownloading: Record<string, boolean>;
+  setIsDownloading: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }
 
-const SettingsView: React.FC<SettingsViewProps> = ({ availableModels, fetchModels, popularModels }) => {
+const SettingsView: React.FC<SettingsViewProps> = ({ 
+  availableModels, 
+  fetchModels, 
+  popularModels,
+  downloadProgress,
+  setDownloadProgress,
+  isDownloading,
+  setIsDownloading
+}) => {
   const [ollamaPath, setOllamaPath] = useState('');
   const [isModelsExpanded, setIsModelsExpanded] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState<Record<string, string>>({});
-  const [isDownloading, setIsDownloading] = useState<Record<string, boolean>>({});
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modelToRemove, setModelToRemove] = useState('');
 
   useEffect(() => {
     const fetchPath = async () => {
@@ -24,19 +35,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ availableModels, fetchModel
       }
     };
     fetchPath();
-
-    popularModels.forEach(model => {
-      EventsOn(`download-progress-${model}`, (data) => {
-        setDownloadProgress(prev => ({ ...prev, [model]: data }));
-      });
-    });
-
-    return () => {
-      popularModels.forEach(model => {
-        EventsOff(`download-progress-${model}`);
-      });
-    };
-  }, [popularModels]);
+  }, []);
 
   const handleBrowseFolder = async () => {
     try {
@@ -78,6 +77,22 @@ const SettingsView: React.FC<SettingsViewProps> = ({ availableModels, fetchModel
       console.error(err);
     } finally {
       setIsDownloading(prev => ({ ...prev, [modelName]: false }));
+    }
+  };
+
+  const handleRemoveModel = (modelName: string) => {
+    const exactName = availableModels.find(m => m === modelName || m.startsWith(modelName + ':')) || modelName;
+    setModelToRemove(exactName);
+    setIsModalOpen(true);
+  };
+
+  const confirmRemoveModel = async () => {
+    setIsModalOpen(false);
+    const result = await RemoveModel(modelToRemove);
+    if (result === "Success") {
+      fetchModels();
+    } else {
+      alert(`Failed to remove model: ${result}`);
     }
   };
 
@@ -138,15 +153,33 @@ const SettingsView: React.FC<SettingsViewProps> = ({ availableModels, fetchModel
                     
                     <div className="action-area">
                       {downloading ? (
-                        <span className="progress-text">{progress || 'Downloading...'}</span>
-                      ) : !isInstalled ? (
+                        progress && progress.includes('%') ? (
+                          <div className="progress-container">
+                            <div className="progress-bar">
+                              <div className="progress-fill" style={{ width: progress }}></div>
+                            </div>
+                            <span className="progress-percentage">{progress}</span>
+                          </div>
+                        ) : (
+                          <button className="download-btn starting" disabled>
+                            Starting...
+                          </button>
+                        )
+                      ) : isInstalled ? (
+                        <button 
+                          onClick={() => handleRemoveModel(modelName)}
+                          className="remove-btn"
+                        >
+                          Remove
+                        </button>
+                      ) : (
                         <button 
                           onClick={() => startDownload(modelName)}
                           className="download-btn"
                         >
                           Download
                         </button>
-                      ) : null}
+                      )}
                     </div>
                   </div>
                 );
@@ -155,6 +188,23 @@ const SettingsView: React.FC<SettingsViewProps> = ({ availableModels, fetchModel
           )}
         </div>
       </div>
+
+      {isModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-box">
+            <h3>Remove Model</h3>
+            <p>Are you sure you want to remove <strong>{modelToRemove}</strong>?</p>
+            <div className="modal-actions">
+              <button className="modal-btn-cancel" onClick={() => setIsModalOpen(false)}>
+                Cancel
+              </button>
+              <button className="modal-btn-confirm" onClick={confirmRemoveModel}>
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

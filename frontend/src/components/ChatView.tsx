@@ -13,7 +13,10 @@ const ChatView: React.FC<ChatViewProps> = ({ selectedModel, availableModels, set
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isAiTyping, setIsAiTyping] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -22,6 +25,16 @@ const ChatView: React.FC<ChatViewProps> = ({ selectedModel, availableModels, set
   useEffect(() => {
     scrollToBottom();
   }, [messages, isAiTyping]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
@@ -73,12 +86,25 @@ const ChatView: React.FC<ChatViewProps> = ({ selectedModel, availableModels, set
                 boxShadow: msg.role === 'ai' ? '0 2px 4px rgba(0,0,0,0.02)' : 'none'
               }}
             >
-              {msg.role === 'ai' && <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#706558', marginBottom: '4px' }}>🤖 {selectedModel}</div>}
-              {msg.content}
+              {msg.role === 'ai' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <img 
+                    src={characterImg} 
+                    alt="Cria" 
+                    style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                  <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#706558' }}>
+                    {selectedModel}
+                  </span>
+                </div>
+              )}
+              <div style={{ lineHeight: '1.5' }}>
+                {msg.content}
+              </div>
             </div>
           ))}
           {isAiTyping && (
-            <div style={{ alignSelf: 'flex-start', padding: '12px', color: '#706558', fontStyle: 'italic' }}>
+            <div style={{ alignSelf: 'flex-start', padding: '12px', color: '#706558', fontStyle: 'italic', fontSize: '14px' }}>
               Cria is thinking...
             </div>
           )}
@@ -103,18 +129,37 @@ const ChatView: React.FC<ChatViewProps> = ({ selectedModel, availableModels, set
         <div className="chat-input-bottom">
           <div className="chat-input-actions-left"></div>
           <div className="chat-input-actions-right">
-            <select 
-              value={selectedModel} 
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="model-selector-inline"
-              disabled={isAiTyping}
-            >
-              {availableModels.map((model) => (
-                <option key={model} value={model}>
-                  {model}
-                </option>
-              ))}
-            </select>
+            
+            <div className="custom-dropdown-container" ref={dropdownRef}>
+              <button 
+                className="custom-dropdown-button"
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                disabled={isAiTyping}
+              >
+                {selectedModel}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="18 15 12 9 6 15"></polyline>
+                </svg>
+              </button>
+              
+              {isDropdownOpen && (
+                <ul className="custom-dropdown-menu">
+                  {availableModels.map((model) => (
+                    <li 
+                      key={model} 
+                      className={`custom-dropdown-item ${model === selectedModel ? 'selected' : ''}`}
+                      onClick={() => {
+                        setSelectedModel(model);
+                        setIsDropdownOpen(false);
+                      }}
+                    >
+                      {model}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
             <button 
               onClick={handleSendMessage} 
               className="chat-submit-btn"

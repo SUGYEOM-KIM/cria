@@ -111,3 +111,7 @@ func (a *App) DownloadModel(modelName string) string {
 func (a *App) ChatWithModel(modelName string, prompt string) string {
 	return chatWithOllama(modelName, prompt)
 }
+
+func (a *App) RemoveModel(modelName string) string {
+	return removeOllamaModel(modelName)
+}

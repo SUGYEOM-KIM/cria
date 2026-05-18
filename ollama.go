@@ -66,6 +66,7 @@ func chatWithOllama(modelName string, prompt string) string {
 	reqData := ChatRequest{
 		Model: modelName,
 		Messages: []ChatMessage{
+			{Role: "system", Content: "You are a sharp, friendly AI detective named Cria. Help the user solve their problems with a touch of wit and logical deduction. Always respond in the same language that the user used."},
 			{Role: "user", Content: prompt},
 		},
 		Stream: false,
@@ -143,4 +144,19 @@ func processOutput(ctx context.Context, pipe io.ReadCloser, modelName string) {
 			runtime.EventsEmit(ctx, "download-progress-"+modelName, line)
 		}
 	}
+}
+
+func removeOllamaModel(modelName string) string {
+	cmd := exec.Command("ollama", "rm", modelName)
+
+	if currentPath := os.Getenv("OLLAMA_MODELS"); currentPath != "" {
+		cmd.Env = append(os.Environ(), "OLLAMA_MODELS="+currentPath)
+	}
+
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Sprintf("Error: %v", err)
+	}
+
+	return "Success"
 }

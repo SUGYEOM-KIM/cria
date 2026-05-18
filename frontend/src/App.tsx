@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { GetOllamaModels } from '../wailsjs/go/main/App';
+import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
 import Sidebar from './components/Sidebar';
 import ChatView from './components/ChatView';
 import SettingsView from './components/SettingsView';
@@ -9,6 +10,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('chat');
   const [selectedModel, setSelectedModel] = useState('');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [downloadProgress, setDownloadProgress] = useState<Record<string, string>>({});
+  const [isDownloading, setIsDownloading] = useState<Record<string, boolean>>({});
   const popularModels = ['llama3', 'mistral', 'gemma:2b', 'phi3'];
 
   const fetchModels = async () => {
@@ -30,6 +33,18 @@ function App() {
 
   useEffect(() => {
     fetchModels();
+
+    popularModels.forEach(model => {
+      EventsOn(`download-progress-${model}`, (data) => {
+        setDownloadProgress(prev => ({ ...prev, [model]: data }));
+      });
+    });
+
+    return () => {
+      popularModels.forEach(model => {
+        EventsOff(`download-progress-${model}`);
+      });
+    };
   }, []);
 
   const renderContent = () => {
@@ -47,7 +62,11 @@ function App() {
           <SettingsView 
             availableModels={availableModels} 
             fetchModels={fetchModels} 
-            popularModels={popularModels} 
+            popularModels={popularModels}
+            downloadProgress={downloadProgress}
+            setDownloadProgress={setDownloadProgress}
+            isDownloading={isDownloading}
+            setIsDownloading={setIsDownloading}
           />
         );
       case 'agent':
