@@ -22,12 +22,22 @@ body {
 }
 
 .sidebar {
-  width: 260px;
+  width: 240px;
   background-color: #f1ede4;
   padding: 24px 16px;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   border-right: 1px solid #e1dacb;
+}
+
+.sidebar-top {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
 }
 
 .sidebar-logo h2 {
@@ -227,7 +237,54 @@ body {
   color: #2b2722;
 }
 
-.placeholder-view p {
+.placeholder-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.settings-separator {
+  width: 100%;
+  height: 1px;
+  background-color: #e1dacb;
+  margin: 12px 0 24px 0;
+}
+
+.settings-path-container {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 600px;
+  margin-bottom: 16px;
+}
+
+.settings-input-field {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #dcd3c1;
+  background: #ffffff;
+  color: #2b2722;
   font-size: 16px;
+  outline: none;
+}
+
+.settings-browse-btn {
+  height: 47px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid #dcd3c1;
+  background: #ffffff;
   color: #706558;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.settings-browse-btn:hover {
+  background: #e6dfd3;
 }

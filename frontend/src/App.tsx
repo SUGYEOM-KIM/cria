@@ -1,18 +1,73 @@
-import { useState } from 'react';
-import characterImg from './assets/images/logo-universal.png';
+import { useState, useEffect } from 'react';
+import characterImg from './assets/images/detective_cria.png';
+import { GetOllamaModels, GetOllamaPath, UpdateOllamaPath, SelectFolder } from '../wailsjs/go/main/App';
 import './App.css';
 
 function App() {
   const [activeTab, setActiveTab] = useState('chat');
   const [messages, setMessages] = useState<string[]>([]);
   const [inputText, setInputText] = useState('');
-  const [selectedModel, setSelectedModel] = useState('llama3');
-  const availableModels = ['llama3', 'mistral', 'gemma', 'phi3'];
+  const [selectedModel, setSelectedModel] = useState('');
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [ollamaPath, setOllamaPath] = useState('');
+
+  const fetchModels = async () => {
+    try {
+      const models = await GetOllamaModels();
+      if (models && models.length > 0) {
+        setAvailableModels(models);
+        setSelectedModel(models[0]);
+      } else {
+        setAvailableModels(['No models available']);
+        setSelectedModel('No models available');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchModels();
+    const fetchPath = async () => {
+      try {
+        const path = await GetOllamaPath();
+        setOllamaPath(path);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchPath();
+  }, []);
 
   const handleSendMessage = () => {
     if (!inputText.trim()) return;
     setMessages([...messages, inputText]);
     setInputText('');
+  };
+
+  const handleBrowseFolder = async () => {
+    try {
+      const selected = await SelectFolder();
+      if (selected) {
+        setOllamaPath(selected);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSavePath = async () => {
+    try {
+      const success = await UpdateOllamaPath(ollamaPath);
+      if (success) {
+        alert('Settings saved. Restarting Ollama engine...');
+        setTimeout(() => {
+          fetchModels();
+        }, 3000);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const renderContent = () => {
@@ -74,18 +129,43 @@ function App() {
       case 'agent':
         return (
           <div className="placeholder-view">
-            <h2>🤖 AI Agent</h2>
+            <h2>AI Agent</h2>
             <p>A screen to select or configure various AI agents.</p>
           </div>
         );
       case 'upgrade':
         return (
           <div className="placeholder-view">
-            <h2>🚀 Upgrade Cria</h2>
+            <h2>Upgrade Cria</h2>
             <p>A screen to train the agent or upgrade its features.</p>
           </div>
         );
-      default:
+      case 'settings':
+        return (
+          <div className="placeholder-view">
+            <h2>Settings</h2>
+            <div className="settings-separator"></div>
+            <div style={{ width: '100%', maxWidth: '600px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', textAlign: 'left' }}>Ollama Models Path</label>
+              <div className="settings-path-container">
+                <input 
+                  type="text" 
+                  value={ollamaPath} 
+                  onChange={(e) => setOllamaPath(e.target.value)}
+                  className="settings-input-field" 
+                />
+                <button onClick={handleBrowseFolder} className="settings-browse-btn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                  </svg>
+                </button>
+              </div>
+              <button onClick={handleSavePath} className="chat-submit-btn" style={{ borderRadius: '8px', width: 'auto', height: 'auto', padding: '12px 24px' }}>
+                Save Settings
+              </button>
+            </div>
+          </div>
+        );
         return null;
     }
   };
@@ -93,29 +173,41 @@ function App() {
   return (
     <div className="app-container">
       <nav className="sidebar">
-        <div className="sidebar-logo">
-          <h2>Cria AI</h2>
+        <div className="sidebar-top">
+          <div className="sidebar-logo">
+            <h2>Cria AI</h2>
+          </div>
+          <ul className="nav-menu">
+            <li 
+              className={activeTab === 'chat' ? 'active' : ''} 
+              onClick={() => setActiveTab('chat')}
+            >
+              New Chat
+            </li>
+            <li 
+              className={activeTab === 'agent' ? 'active' : ''} 
+              onClick={() => setActiveTab('agent')}
+            >
+              AI Agent
+            </li>
+            <li 
+              className={activeTab === 'upgrade' ? 'active' : ''} 
+              onClick={() => setActiveTab('upgrade')}
+            >
+              Upgrade Cria
+            </li>
+          </ul>
         </div>
-        <ul className="nav-menu">
-          <li 
-            className={activeTab === 'chat' ? 'active' : ''} 
-            onClick={() => setActiveTab('chat')}
-          >
-            New Chat
-          </li>
-          <li 
-            className={activeTab === 'agent' ? 'active' : ''} 
-            onClick={() => setActiveTab('agent')}
-          >
-            AI Agent
-          </li>
-          <li 
-            className={activeTab === 'upgrade' ? 'active' : ''} 
-            onClick={() => setActiveTab('upgrade')}
-          >
-            Upgrade Cria
-          </li>
-        </ul>
+        <div className="sidebar-bottom">
+          <ul className="nav-menu">
+            <li 
+              className={activeTab === 'settings' ? 'active' : ''} 
+              onClick={() => setActiveTab('settings')}
+            >
+              Settings
+            </li>
+          </ul>
+        </div>
       </nav>
 
       <main className="main-content">
