@@ -288,3 +288,107 @@ body {
 .settings-browse-btn:hover {
   background: #e6dfd3;
 }
+
+.models-accordion {
+  width: 100%;
+  border: 1px solid #dcd3c1;
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #ffffff;
+}
+
+.accordion-header {
+  padding: 16px;
+  background-color: #f1ede4;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #2b2722;
+  transition: background-color 0.2s;
+}
+
+.accordion-header:hover {
+  background-color: #e6dfd3;
+}
+
+.accordion-content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.model-list-item {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e1dacb;
+}
+
+.model-list-item:last-child {
+  border-bottom: none;
+}
+
+.model-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.model-name {
+  font-weight: 500;
+  color: #3c3730;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-installed {
+  background-color: #e6f4ea;
+  color: #1e8e3e;
+}
+
+.status-not-installed {
+  background-color: #fce8e6;
+  color: #d93025;
+}
+
+.action-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 150px;
+  justify-content: flex-end;
+}
+
+.download-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  background: #76695b;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+.download-btn:hover {
+  background: #5f5448;
+}
+
+.download-btn:disabled {
+  background: #c3bbb1;
+  cursor: not-allowed;
+}
+
+.progress-text {
+  font-size: 14px;
+  color: #706558;
+  font-family: monospace;
+}

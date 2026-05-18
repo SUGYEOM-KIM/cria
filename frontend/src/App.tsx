@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import characterImg from './assets/images/detective_cria.png';
-import { GetOllamaModels, GetOllamaPath, UpdateOllamaPath, SelectFolder } from '../wailsjs/go/main/App';
+import { GetOllamaModels, GetOllamaPath, UpdateOllamaPath, SelectFolder, DownloadModel } from '../wailsjs/go/main/App';
+import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
 import './App.css';
 
 function App() {
@@ -10,6 +11,12 @@ function App() {
   const [selectedModel, setSelectedModel] = useState('');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [ollamaPath, setOllamaPath] = useState('');
+
+  const [isModelsExpanded, setIsModelsExpanded] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<Record<string, string>>({});
+  const [isDownloading, setIsDownloading] = useState<Record<string, boolean>>({});
+
+  const popularModels = ['llama3', 'mistral', 'gemma:2b', 'phi3'];
 
   const fetchModels = async () => {
     try {
@@ -37,6 +44,18 @@ function App() {
       }
     };
     fetchPath();
+
+    popularModels.forEach(model => {
+      EventsOn(`download-progress-${model}`, (data) => {
+        setDownloadProgress(prev => ({ ...prev, [model]: data }));
+      });
+    });
+
+    return () => {
+      popularModels.forEach(model => {
+        EventsOff(`download-progress-${model}`);
+      });
+    };
   }, []);
 
   const handleSendMessage = () => {
@@ -67,6 +86,24 @@ function App() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const startDownload = async (modelName: string) => {
+    setIsDownloading(prev => ({ ...prev, [modelName]: true }));
+    setDownloadProgress(prev => ({ ...prev, [modelName]: 'Starting...' }));
+    
+    try {
+      const result = await DownloadModel(modelName);
+      if (result === "Success") {
+        fetchModels();
+      } else {
+        alert(`Failed to download ${modelName}.`);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsDownloading(prev => ({ ...prev, [modelName]: false }));
     }
   };
 
@@ -142,10 +179,11 @@ function App() {
         );
       case 'settings':
         return (
-          <div className="placeholder-view">
+          <div className="placeholder-view" style={{ width: '100%', maxWidth: '800px', margin: '0 auto' }}>
             <h2>Settings</h2>
             <div className="settings-separator"></div>
-            <div style={{ width: '100%', maxWidth: '600px' }}>
+            
+            <div style={{ width: '100%', marginBottom: '40px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', textAlign: 'left' }}>Ollama Models Path</label>
               <div className="settings-path-container">
                 <input 
@@ -164,8 +202,60 @@ function App() {
                 Save Settings
               </button>
             </div>
+
+            <div style={{ width: '100%' }}>
+              <h3 style={{ fontSize: '18px', color: '#2b2722', marginBottom: '16px', textAlign: 'left' }}>Model Management</h3>
+              
+              <div className="models-accordion">
+                <div 
+                  className="accordion-header"
+                  onClick={() => setIsModelsExpanded(!isModelsExpanded)}
+                >
+                  <span>Popular Models</span>
+                  <span>{isModelsExpanded ? '▲' : '▼'}</span>
+                </div>
+                
+                {isModelsExpanded && (
+                  <div className="accordion-content">
+                    {popularModels.map((modelName) => {
+                      const isInstalled = availableModels.includes(modelName) || availableModels.some(m => m.startsWith(modelName + ':'));
+                      const downloading = isDownloading[modelName];
+                      const progress = downloadProgress[modelName];
+
+                      return (
+                        <div key={modelName} className="model-list-item">
+                          <div className="model-info">
+                            <span className="model-name">{modelName}</span>
+                            {isInstalled ? (
+                              <span className="status-badge status-installed">Installed</span>
+                            ) : (
+                              <span className="status-badge status-not-installed">Not Installed</span>
+                            )}
+                          </div>
+                          
+                          <div className="action-area">
+                            {downloading ? (
+                              <span className="progress-text">{progress || 'Downloading...'}</span>
+                            ) : !isInstalled ? (
+                              <button 
+                                onClick={() => startDownload(modelName)}
+                                className="download-btn"
+                              >
+                                Download
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
           </div>
         );
+      default:
         return null;
     }
   };

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"cria/internal/ollama"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -168,4 +170,50 @@ func (a *App) SelectFolder() string {
 		return ""
 	}
 	return folder
+}
+
+func (a *App) DownloadModel(modelName string) string {
+	cmd := exec.Command("ollama", "pull", modelName)
+
+	if currentPath := os.Getenv("OLLAMA_MODELS"); currentPath != "" {
+		cmd.Env = append(os.Environ(), "OLLAMA_MODELS="+currentPath)
+	}
+
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
+
+	err := cmd.Start()
+	if err != nil {
+		return fmt.Sprintf("Error starting: %v", err)
+	}
+
+	go a.processOutput(stdout, modelName)
+	go a.processOutput(stderr, modelName)
+
+	err = cmd.Wait()
+	if err != nil {
+		return fmt.Sprintf("Error finishing: %v", err)
+	}
+
+	runtime.EventsEmit(a.ctx, "download-progress-"+modelName, "100%")
+	return "Success"
+}
+
+func (a *App) processOutput(pipe io.ReadCloser, modelName string) {
+	scanner := bufio.NewScanner(pipe)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.Contains(line, "%") {
+			parts := strings.Split(line, " ")
+			for _, part := range parts {
+				if strings.Contains(part, "%") {
+					runtime.EventsEmit(a.ctx, "download-progress-"+modelName, part)
+					break
+				}
+			}
+		} else {
+			runtime.EventsEmit(a.ctx, "download-progress-"+modelName, line)
+		}
+	}
 }
