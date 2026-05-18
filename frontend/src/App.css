@@ -207,6 +207,12 @@ body {
   color: #706558;
 }
 
+.model-selector-inline option {
+  background-color: #ffffff;
+  color: #2b2722;
+  font-weight: 500;
+}
+
 .chat-submit-btn {
   width: 36px;
   height: 36px;
