@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"cria/internal/ollama"
 	"encoding/json"
@@ -15,6 +16,22 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+type ChatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type ChatRequest struct {
+	Model    string        `json:"model"`
+	Messages []ChatMessage `json:"messages"`
+	Stream   bool          `json:"stream"`
+}
+
+type ChatResponse struct {
+	Message ChatMessage `json:"message"`
+	Error   string      `json:"error,omitempty"`
+}
 
 type Config struct {
 	OllamaModelsPath string `json:"ollama_models_path"`
@@ -216,4 +233,49 @@ func (a *App) processOutput(pipe io.ReadCloser, modelName string) {
 			runtime.EventsEmit(a.ctx, "download-progress-"+modelName, line)
 		}
 	}
+}
+
+func (a *App) ChatWithModel(modelName string, prompt string) string {
+	fmt.Printf("[DEBUG] Sending message to model '%s': %s\n", modelName, prompt)
+
+	reqData := ChatRequest{
+		Model: modelName,
+		Messages: []ChatMessage{
+			{Role: "user", Content: prompt},
+		},
+		Stream: false,
+	}
+
+	jsonData, err := json.Marshal(reqData)
+	if err != nil {
+		fmt.Printf("[DEBUG] JSON marshal error: %v\n", err)
+		return "Error: Could not process request data."
+	}
+
+	resp, err := http.Post("http://localhost:11434/api/chat", "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		fmt.Printf("[DEBUG] HTTP POST error: %v\n", err)
+		return "Error: Could not connect to Ollama. Make sure it is running."
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("[DEBUG] Read body error: %v\n", err)
+		return "Error: Could not read response from Ollama."
+	}
+
+	var chatResp ChatResponse
+	if err := json.Unmarshal(bodyBytes, &chatResp); err != nil {
+		fmt.Printf("[DEBUG] JSON unmarshal error: %v\n", err)
+		return "Error: Could not parse response from Ollama."
+	}
+
+	if chatResp.Error != "" {
+		fmt.Printf("[DEBUG] Ollama returned error: %s\n", chatResp.Error)
+		return fmt.Sprintf("Ollama Error: %s", chatResp.Error)
+	}
+
+	fmt.Printf("[DEBUG] Received reply: %s\n", chatResp.Message.Content)
+	return chatResp.Message.Content
 }
