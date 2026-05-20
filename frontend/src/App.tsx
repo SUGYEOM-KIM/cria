@@ -3,7 +3,7 @@ import { GetOllamaModels } from '../wailsjs/go/main/App';
 import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
 import Sidebar from './components/Sidebar';
 import ChatView from './components/ChatView';
-import SettingsView from './components/SettingsView';
+import SettingsView from './components/settings/SettingsView';
 import './App.css';
 
 function App() {

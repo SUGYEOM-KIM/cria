@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import characterImg from '../assets/images/detective_cria.png';
 import { ChatWithModel } from '../../wailsjs/go/main/App';
 import { Message } from '../types';
+import './ChatView.css';
 
 interface ChatViewProps {
   selectedModel: string;
