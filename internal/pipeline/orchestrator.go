@@ -30,8 +30,17 @@ type Orchestrator struct {
 }
 
 func NewOrchestrator(ctx context.Context, workspacePath string) *Orchestrator {
+	fmt.Println("[PIPELINE] NewOrchestrator start. Path:", workspacePath)
+
 	gitMgr := vcs.NewGitManager(workspacePath)
-	gitMgr.InitIfNeeded()
+
+	fmt.Println("[PIPELINE] Calling InitIfNeeded...")
+	err := gitMgr.InitIfNeeded()
+	if err != nil {
+		fmt.Printf("[PIPELINE] FATAL: InitIfNeeded failed: %v\n", err)
+	} else {
+		fmt.Println("[PIPELINE] InitIfNeeded finished successfully.")
+	}
 
 	return &Orchestrator{
 		ctx:           ctx,
@@ -46,7 +55,12 @@ func (o *Orchestrator) Emit(event PipelineEvent) {
 
 func (o *Orchestrator) RunMock(task string, hitlChan chan HITLResponse) {
 	branchName := fmt.Sprintf("upgrade-%d", time.Now().Unix())
-	o.git.StartUpgradeBranch(branchName)
+
+	err := o.git.StartUpgradeBranch(branchName)
+	if err != nil {
+		o.Emit(PipelineEvent{Type: "toast", Icon: "❌", Content: "Git 설정 실패: " + err.Error()})
+		return
+	}
 
 	o.Emit(PipelineEvent{Type: "toast", Icon: "🚀", Content: "System upgrade pipeline 시작!"})
 
@@ -94,7 +108,11 @@ designLoop:
 	time.Sleep(2 * time.Second)
 	o.Emit(PipelineEvent{Type: "system_msg", Icon: "✅", Role: "Test Verifier", Action: "RUN_PYTEST", Content: "모든 테스트 통과 (12 passed)"})
 
-	o.git.CommitAndMerge(branchName, fmt.Sprintf("Auto-upgrade: %s", task))
+	err = o.git.CommitAndMerge(branchName, fmt.Sprintf("Auto-upgrade: %s", task))
+	if err != nil {
+		o.Emit(PipelineEvent{Type: "toast", Icon: "❌", Content: "병합 실패: " + err.Error()})
+		return
+	}
 
 	time.Sleep(1 * time.Second)
 	o.Emit(PipelineEvent{Type: "toast", Icon: "🎊", Content: "Mission Complete! 안전하게 메인 코드에 병합되었습니다."})

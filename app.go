@@ -113,18 +113,21 @@ func (a *App) RemoveModel(modelName string) string {
 }
 
 func (a *App) StartUpgradePipeline(task string) {
+	fmt.Println("[APP] StartUpgradePipeline initiated with task:", task)
 	cwd, err := os.Getwd()
 	if err != nil {
 		cwd = "."
 	}
 
-	workspacePath := filepath.Join(cwd, ".cria_workspace")
+	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
+	fmt.Println("[APP] Workspace path:", workspacePath)
 
 	err = vcs.SetupShadowWorkspace(cwd, workspacePath)
 	if err != nil {
-		fmt.Printf("Failed to setup shadow workspace: %v\n", err)
+		fmt.Printf("[APP] Error: SetupShadowWorkspace failed: %v\n", err)
 		return
 	}
+	fmt.Println("[APP] Clone successful, starting orchestrator")
 
 	orc := pipeline.NewOrchestrator(a.ctx, workspacePath)
 	go orc.RunMock(task, a.hitlChan)

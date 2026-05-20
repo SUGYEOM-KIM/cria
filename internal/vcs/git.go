@@ -32,8 +32,13 @@ func (g *GitManager) execGit(args ...string) (string, error) {
 }
 
 func (g *GitManager) InitIfNeeded() error {
+	fmt.Println("[GIT] Configuring Git identity...")
+	g.execGit("config", "user.name", "Cria Agent")
+	g.execGit("config", "user.email", "cria@agent.local")
+
 	_, err := g.execGit("rev-parse", "--is-inside-work-tree")
 	if err != nil {
+		fmt.Println("[GIT] Not a git repo, initializing...")
 		if _, err := g.execGit("init"); err != nil {
 			return err
 		}
@@ -48,10 +53,31 @@ func (g *GitManager) InitIfNeeded() error {
 }
 
 func (g *GitManager) StartUpgradeBranch(branchName string) error {
-	g.execGit("checkout", "main")
-	g.execGit("reset", "--hard")
-	_, err := g.execGit("checkout", "-b", branchName)
-	return err
+	rawBranch, err := g.execGit("rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		return err
+	}
+	currentBranch := strings.TrimSpace(rawBranch)
+
+	fmt.Printf("[GIT] Target: %s, Current: %s. Starting checkout...\n", branchName, currentBranch)
+
+	fmt.Println("[GIT] Executing checkout...")
+	if _, err := g.execGit("checkout", currentBranch); err != nil {
+		return err
+	}
+
+	fmt.Println("[GIT] Executing reset...")
+	if _, err := g.execGit("reset", "--hard"); err != nil {
+		return err
+	}
+
+	fmt.Println("[GIT] Executing create branch...")
+	if _, err := g.execGit("checkout", "-b", branchName); err != nil {
+		return err
+	}
+
+	fmt.Println("[GIT] Branch creation success!")
+	return nil
 }
 
 func (g *GitManager) CommitAndMerge(branchName, commitMsg string) error {
