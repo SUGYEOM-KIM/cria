@@ -5,6 +5,7 @@ import (
 	"cria/internal/llm"
 	"cria/internal/ollama"
 	"cria/internal/pipeline"
+	"cria/internal/vcs"
 	"fmt"
 	"os"
 	"os/exec"
@@ -116,7 +117,16 @@ func (a *App) StartUpgradePipeline(task string) {
 	if err != nil {
 		cwd = "."
 	}
-	orc := pipeline.NewOrchestrator(a.ctx, cwd)
+
+	workspacePath := filepath.Join(cwd, ".cria_workspace")
+
+	err = vcs.SetupShadowWorkspace(cwd, workspacePath)
+	if err != nil {
+		fmt.Printf("Failed to setup shadow workspace: %v\n", err)
+		return
+	}
+
+	orc := pipeline.NewOrchestrator(a.ctx, workspacePath)
 	go orc.RunMock(task, a.hitlChan)
 }
 
