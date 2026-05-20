@@ -1,0 +1,123 @@
+.agent-config-container {
+  background: #1e1e1e;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 1px solid #333;
+  animation: slideDownFade 0.3s ease-out;
+}
+
+@keyframes slideDownFade {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.agent-config-header h3 {
+  color: #fff;
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.agent-config-header p {
+  color: #a0a0a0;
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.agent-character-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.agent-character-card {
+  background: #252526;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #333;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+
+.agent-character-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  border-color: #555;
+}
+
+.character-avatar-box {
+  height: 140px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.character-avatar-box::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(to top, #252526, transparent);
+}
+
+.character-avatar-placeholder {
+  color: rgba(255,255,255,0.2);
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.agent-card-body {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.agent-card-title {
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.agent-card-role {
+  color: #858585;
+  font-size: 12px;
+  margin-bottom: 16px;
+  font-weight: 500;
+  flex: 1;
+}
+
+.agent-model-select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.agent-model-select {
+  width: 100%;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border: 1px solid #444;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.agent-model-select:hover {
+  border-color: #666;
+}
+
+.agent-model-select:focus {
+  border-color: #007acc;
+}

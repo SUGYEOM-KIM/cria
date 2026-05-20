@@ -4,6 +4,7 @@ import { EventsOn, EventsOff } from '../wailsjs/runtime/runtime';
 import Sidebar from './components/Sidebar';
 import ChatView from './components/ChatView';
 import SettingsView from './components/settings/SettingsView';
+import UpgradeView from './components/upgrade/UpgradeView';
 import './App.css';
 
 function App() {
@@ -20,7 +21,7 @@ function App() {
       if (models && models.length > 0) {
         setAvailableModels(models);
         if (!selectedModel || !models.includes(selectedModel)) {
-           setSelectedModel(models[0]);
+          setSelectedModel(models[0]);
         }
       } else {
         setAvailableModels(['No models available']);
@@ -51,18 +52,17 @@ function App() {
     switch (activeTab) {
       case 'chat':
         return (
-          <ChatView 
-            selectedModel={selectedModel} 
-            availableModels={availableModels} 
-            setSelectedModel={setSelectedModel} 
+          <ChatView
+            selectedModel={selectedModel}
+            availableModels={availableModels}
+            setSelectedModel={setSelectedModel}
           />
         );
       case 'settings':
         return (
-          <SettingsView 
-            availableModels={availableModels} 
-            fetchModels={fetchModels} 
-            popularModels={popularModels}
+          <SettingsView
+            availableModels={availableModels}
+            fetchModels={fetchModels}
             downloadProgress={downloadProgress}
             setDownloadProgress={setDownloadProgress}
             isDownloading={isDownloading}
@@ -77,12 +77,7 @@ function App() {
           </div>
         );
       case 'upgrade':
-        return (
-          <div className="placeholder-view">
-            <h2>Upgrade Cria</h2>
-            <p>A screen to train the agent or upgrade its features.</p>
-          </div>
-        );
+        return <UpgradeView />;
       default:
         return null;
     }

@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"cria/internal/llm"
 	"cria/internal/ollama"
+	"cria/internal/pipeline"
 	"fmt"
 	"os"
 	"os/exec"
@@ -14,10 +16,13 @@ import (
 type App struct {
 	ctx       context.Context
 	serverCmd *exec.Cmd
+	hitlChan  chan pipeline.HITLResponse
 }
 
 func NewApp() *App {
-	return &App{}
+	return &App{
+		hitlChan: make(chan pipeline.HITLResponse),
+	}
 }
 
 func (a *App) startup(ctx context.Context) {
@@ -36,8 +41,6 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}
 
-	fmt.Printf("Current OLLAMA_MODELS path: %s\n", os.Getenv("OLLAMA_MODELS"))
-
 	go func() {
 		cmd, err := ollama.EnsureInstalledAndRun()
 		if err != nil {
@@ -55,10 +58,6 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 }
 
-// ----------------------------------------------------
-// Frontend Exposed Functions (Wails Bindings)
-// ----------------------------------------------------
-
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
 }
@@ -71,15 +70,11 @@ func (a *App) UpdateOllamaPath(newPath string) bool {
 	os.Setenv("OLLAMA_MODELS", newPath)
 	saveConfigPath(newPath)
 
-	fmt.Printf("OLLAMA_MODELS Env Set To: %s\n", os.Getenv("OLLAMA_MODELS"))
-
 	if a.serverCmd != nil && a.serverCmd.Process != nil {
-		fmt.Printf("Killing existing Ollama process (PID: %d)...\n", a.serverCmd.Process.Pid)
 		_ = a.serverCmd.Process.Kill()
 	}
 
 	go func() {
-		fmt.Printf("Restarting Ollama engine...\n")
 		cmd, err := ollama.EnsureInstalledAndRun()
 		if err != nil {
 			return
@@ -101,17 +96,34 @@ func (a *App) SelectFolder() string {
 }
 
 func (a *App) GetOllamaModels() []string {
-	return fetchOllamaModels()
+	return llm.FetchOllamaModels()
 }
 
 func (a *App) DownloadModel(modelName string) string {
-	return downloadOllamaModel(a.ctx, modelName)
+	return llm.DownloadOllamaModel(a.ctx, modelName)
 }
 
 func (a *App) ChatWithModel(modelName string, prompt string) string {
-	return chatWithOllama(modelName, prompt)
+	return llm.ChatWithOllama(modelName, prompt)
 }
 
 func (a *App) RemoveModel(modelName string) string {
-	return removeOllamaModel(modelName)
+	return llm.RemoveOllamaModel(modelName)
+}
+
+func (a *App) StartUpgradePipeline(task string) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = "."
+	}
+	orc := pipeline.NewOrchestrator(a.ctx, cwd)
+	go orc.RunMock(task, a.hitlChan)
+}
+
+func (a *App) ApproveHITL() {
+	a.hitlChan <- pipeline.HITLResponse{Approved: true}
+}
+
+func (a *App) RejectHITL(feedback string) {
+	a.hitlChan <- pipeline.HITLResponse{Approved: false, Feedback: feedback}
 }
