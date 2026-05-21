@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -194,24 +195,22 @@ func (a *App) ApplyUpgrade(hash string, version string) error {
 
 	checkoutCmd := exec.Command("git", "checkout", hash)
 	checkoutCmd.Dir = workspacePath
+	checkoutCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	if err := checkoutCmd.Run(); err != nil {
 		return fmt.Errorf("checkout failed: %v", err)
 	}
 
-	frontendPath := filepath.Join(workspacePath, "frontend")
+	ldflags := fmt.Sprintf("-X main.CurrentCommit=%s -X main.CurrentVersion=%s", hash, version)
 
-	npmInstallCmd := exec.Command("npm", "install")
-	npmInstallCmd.Dir = frontendPath
-	if out, err := npmInstallCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("npm install failed: %v, output: %s", err, string(out))
+	buildCmd := exec.Command("wails", "build", "-clean", "-ldflags", ldflags, "-o", "cria-upgrade.exe")
+	buildCmd.Dir = workspacePath
+	buildCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+
+	if out, err := buildCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("wails build failed: %v, output: %s", err, string(out))
 	}
 
-	npmBuildCmd := exec.Command("npm", "run", "build")
-	npmBuildCmd.Dir = frontendPath
-	if out, err := npmBuildCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("npm build failed: %v, output: %s", err, string(out))
-	}
-
+	newBinPath := filepath.Join(workspacePath, "build", "bin", "cria-upgrade.exe")
 	execDir := filepath.Dir(execPath)
 
 	oldExecPath := execPath + ".old"
@@ -220,12 +219,11 @@ func (a *App) ApplyUpgrade(hash string, version string) error {
 		return fmt.Errorf("failed to backup current binary: %v", err)
 	}
 
-	ldflags := fmt.Sprintf("-X main.CurrentCommit=%s -X main.CurrentVersion=%s", hash, version)
-	buildCmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", execPath, ".")
-	buildCmd.Dir = workspacePath
-	if out, err := buildCmd.CombinedOutput(); err != nil {
+	moveCmd := exec.Command("cmd", "/c", "move", "/Y", newBinPath, execPath)
+	moveCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	if err := moveCmd.Run(); err != nil {
 		_ = os.Rename(oldExecPath, execPath)
-		return fmt.Errorf("build failed: %v, output: %s", err, string(out))
+		return fmt.Errorf("failed to move new binary: %v", err)
 	}
 
 	newCmd := exec.Command(execPath)

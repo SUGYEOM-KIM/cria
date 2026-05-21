@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 )
 
 type GitManager struct {
@@ -19,6 +20,8 @@ func NewGitManager(path string) *GitManager {
 func (g *GitManager) execGit(args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = g.repoPath
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+
 	var outBuf bytes.Buffer
 	var errBuf bytes.Buffer
 	cmd.Stdout = &outBuf
@@ -81,6 +84,7 @@ func (g *GitManager) AbortBranch(branchName string) error {
 func SetupShadowWorkspace(sourcePath, workspacePath string) error {
 	_ = os.RemoveAll(workspacePath)
 	cmd := exec.Command("git", "clone", sourcePath, workspacePath)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	return cmd.Run()
 }
 
