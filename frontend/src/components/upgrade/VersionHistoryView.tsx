@@ -82,14 +82,6 @@ const VersionHistoryView: React.FC = () => {
     }
   };
 
-  const visibleHistory = history.filter(item => {
-    const isCurrent = item.hash && activeCommit && (
-      activeCommit.toLowerCase().startsWith(item.hash.toLowerCase()) || 
-      item.hash.toLowerCase().startsWith(activeCommit.toLowerCase())
-    );
-    return item.isAutoUpgrade || isCurrent;
-  });
-
   return (
     <div style={{ padding: '30px', color: '#2b2722', width: '100%', boxSizing: 'border-box' }}>
       <ConfirmDialog
@@ -120,10 +112,10 @@ const VersionHistoryView: React.FC = () => {
       <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e1dacb', width: '100%', overflow: 'hidden' }}>
         {isLoading ? (
           <div style={{ padding: '30px', textAlign: 'center' }}>Loading...</div>
-        ) : visibleHistory.length === 0 ? (
+        ) : history.length === 0 ? (
           <div style={{ padding: '30px', textAlign: 'center' }}>No history found.</div>
         ) : (
-          visibleHistory.map((item, idx) => {
+          history.map((item, idx) => {
             const isCurrent = item.hash && activeCommit && (
               activeCommit.toLowerCase().startsWith(item.hash.toLowerCase()) || 
               item.hash.toLowerCase().startsWith(activeCommit.toLowerCase())
@@ -137,7 +129,7 @@ const VersionHistoryView: React.FC = () => {
                 justifyContent: 'space-between', 
                 alignItems: 'center', 
                 padding: '16px 20px', 
-                borderBottom: idx === visibleHistory.length - 1 ? 'none' : '1px solid #e1dacb', 
+                borderBottom: idx === history.length - 1 ? 'none' : '1px solid #e1dacb', 
                 background: isCurrent ? '#fdfbf7' : 'transparent'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
