@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -179,6 +180,16 @@ func (a *App) GetActiveVersion() string {
 }
 
 func (a *App) ApplyUpgrade(hash string, version string) error {
+	execPath, err := os.Executable()
+	if err != nil {
+		return err
+	}
+
+	if strings.HasSuffix(strings.ToLower(execPath), "-dev.exe") || CurrentCommit == "dev-mode-hash" {
+		a.SimulateApplyAndRestart(hash, version)
+		return nil
+	}
+
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
 
 	checkoutCmd := exec.Command("git", "checkout", hash)
@@ -187,10 +198,20 @@ func (a *App) ApplyUpgrade(hash string, version string) error {
 		return fmt.Errorf("checkout failed: %v", err)
 	}
 
-	execPath, err := os.Executable()
-	if err != nil {
-		return err
+	frontendPath := filepath.Join(workspacePath, "frontend")
+
+	npmInstallCmd := exec.Command("npm", "install")
+	npmInstallCmd.Dir = frontendPath
+	if out, err := npmInstallCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("npm install failed: %v, output: %s", err, string(out))
 	}
+
+	npmBuildCmd := exec.Command("npm", "run", "build")
+	npmBuildCmd.Dir = frontendPath
+	if out, err := npmBuildCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("npm build failed: %v, output: %s", err, string(out))
+	}
+
 	execDir := filepath.Dir(execPath)
 
 	oldExecPath := execPath + ".old"
@@ -225,4 +246,10 @@ func (a *App) GetLatestVersion() string {
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
 	gitMgr := vcs.NewGitManager(workspacePath)
 	return gitMgr.GetLatestTag()
+}
+
+func (a *App) SimulateApplyAndRestart(hash string, version string) {
+	fmt.Printf("[APP] Simulating restart. Updating CurrentCommit to: %s, Version: %s\n", hash, version)
+	CurrentCommit = hash
+	CurrentVersion = version
 }

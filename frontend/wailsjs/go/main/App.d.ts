@@ -32,6 +32,8 @@ export function RollbackUpgrade(arg1:string):Promise<void>;
 
 export function SelectFolder():Promise<string>;
 
+export function SimulateApplyAndRestart(arg1:string,arg2:string):Promise<void>;
+
 export function StartUpgradePipeline(arg1:string):Promise<void>;
 
 export function UpdateOllamaPath(arg1:string):Promise<boolean>;

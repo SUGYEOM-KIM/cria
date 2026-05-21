@@ -62,6 +62,10 @@ export function SelectFolder() {
   return window['go']['main']['App']['SelectFolder']();
 }
 
+export function SimulateApplyAndRestart(arg1, arg2) {
+  return window['go']['main']['App']['SimulateApplyAndRestart'](arg1, arg2);
+}
+
 export function StartUpgradePipeline(arg1) {
   return window['go']['main']['App']['StartUpgradePipeline'](arg1);
 }
