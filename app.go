@@ -14,6 +14,9 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+var CurrentCommit string = "dev-mode-hash"
+var CurrentVersion string = "v0.0.0"
+
 type App struct {
 	ctx       context.Context
 	serverCmd *exec.Cmd
@@ -139,4 +142,87 @@ func (a *App) ApproveHITL() {
 
 func (a *App) RejectHITL(feedback string) {
 	a.hitlChan <- pipeline.HITLResponse{Approved: false, Feedback: feedback}
+}
+
+func (a *App) RollbackUpgrade(hash string) error {
+	fmt.Println("[APP] Rollback requested for hash:", hash)
+	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
+
+	gitMgr := vcs.NewGitManager(workspacePath)
+	err := gitMgr.RollbackToHash(hash)
+	if err != nil {
+		fmt.Printf("[APP] Rollback failed: %v\n", err)
+		return err
+	}
+
+	return nil
+}
+
+func (a *App) GetUpgradeHistory() []vcs.UpgradeHistory {
+	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
+
+	gitMgr := vcs.NewGitManager(workspacePath)
+	history, err := gitMgr.GetUpgradeHistory()
+	if err != nil {
+		fmt.Printf("[APP] Error fetching history: %v\n", err)
+		return []vcs.UpgradeHistory{}
+	}
+	return history
+}
+
+func (a *App) GetActiveCommit() string {
+	return CurrentCommit
+}
+
+func (a *App) GetActiveVersion() string {
+	return CurrentVersion
+}
+
+func (a *App) ApplyUpgrade(hash string, version string) error {
+	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
+
+	checkoutCmd := exec.Command("git", "checkout", hash)
+	checkoutCmd.Dir = workspacePath
+	if err := checkoutCmd.Run(); err != nil {
+		return fmt.Errorf("checkout failed: %v", err)
+	}
+
+	execPath, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	execDir := filepath.Dir(execPath)
+
+	oldExecPath := execPath + ".old"
+	_ = os.Remove(oldExecPath)
+	if err := os.Rename(execPath, oldExecPath); err != nil {
+		return fmt.Errorf("failed to backup current binary: %v", err)
+	}
+
+	ldflags := fmt.Sprintf("-X main.CurrentCommit=%s -X main.CurrentVersion=%s", hash, version)
+	buildCmd := exec.Command("go", "build", "-ldflags", ldflags, "-o", execPath, ".")
+	buildCmd.Dir = workspacePath
+	if out, err := buildCmd.CombinedOutput(); err != nil {
+		_ = os.Rename(oldExecPath, execPath)
+		return fmt.Errorf("build failed: %v, output: %s", err, string(out))
+	}
+
+	newCmd := exec.Command(execPath)
+	newCmd.Dir = execDir
+	if err := newCmd.Start(); err != nil {
+		_ = os.Rename(oldExecPath, execPath)
+		return fmt.Errorf("failed to restart application: %v", err)
+	}
+
+	go func() {
+		os.Exit(0)
+	}()
+
+	return nil
+}
+
+func (a *App) GetLatestVersion() string {
+	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
+	gitMgr := vcs.NewGitManager(workspacePath)
+	return gitMgr.GetLatestTag()
 }

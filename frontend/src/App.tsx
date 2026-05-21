@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar';
 import ChatView from './components/ChatView';
 import SettingsView from './components/settings/SettingsView';
 import UpgradeView from './components/upgrade/UpgradeView';
+import VersionHistoryView from './components/upgrade/VersionHistoryView';
 import './App.css';
 
 function App() {
@@ -78,6 +79,8 @@ function App() {
         );
       case 'upgrade':
         return <UpgradeView />;
+      case 'history':
+        return <VersionHistoryView />;
       default:
         return null;
     }

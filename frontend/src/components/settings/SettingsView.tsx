@@ -3,7 +3,8 @@ import { RemoveModel } from '../../../wailsjs/go/main/App';
 import OllamaPathSection from './OllamaPathSection';
 import CustomModelPull from './CustomModelPull';
 import InstalledModels from './InstalledModels';
-import ConfirmModal from './ConfirmModal';
+// 🚀 기존 ConfirmModal 대신 공용 ConfirmDialog를 가져옵니다!
+import ConfirmDialog from '../common/ConfirmDialog'; 
 
 interface SettingsViewProps {
   availableModels: string[];
@@ -24,7 +25,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modelToRemove, setModelToRemove] = useState('');
-  const [isRemoving, setIsRemoving] = useState(false); // ★ 삭제 진행 상태 추가
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const handleRemoveModelRequest = (modelName: string) => {
     const exactName = availableModels.find(m => m === modelName || m.startsWith(modelName + ':')) || modelName;
@@ -33,12 +34,12 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const confirmRemoveModel = async () => {
-    setIsRemoving(true); // ★ 모달창 버튼을 로딩 상태로 변경
+    setIsRemoving(true);
     
     try {
       const result = await RemoveModel(modelToRemove);
       if (result === "Success") {
-        await fetchModels(); // 모델 리스트 새로고침 완료 대기
+        await fetchModels();
       } else {
         alert(`Failed to remove model: ${result}`);
       }
@@ -46,8 +47,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({
       console.error(err);
       alert('Error removing model.');
     } finally {
-      setIsRemoving(false); // ★ 로딩 상태 해제
-      setIsModalOpen(false); // ★ 모달창 닫기
+      setIsRemoving(false);
+      setIsModalOpen(false);
     }
   };
 
@@ -75,12 +76,19 @@ const SettingsView: React.FC<SettingsViewProps> = ({
         />
       </div>
 
-      <ConfirmModal 
+      {/* 🚀 공용 다이얼로그 적용 🚀 */}
+      <ConfirmDialog
         isOpen={isModalOpen}
-        modelName={modelToRemove}
-        onClose={() => !isRemoving && setIsModalOpen(false)} // 삭제 중일 땐 바깥 클릭 등으로 닫히는 것 방지
+        title="Remove Model"
+        message={
+          <>
+            Are you sure you want to remove<br/>
+            <strong>{modelToRemove}</strong>?
+          </>
+        }
+        confirmText={isRemoving ? 'Removing...' : 'Remove'}
         onConfirm={confirmRemoveModel}
-        isRemoving={isRemoving} // ★ 모달에 상태 전달
+        onCancel={() => !isRemoving && setIsModalOpen(false)}
       />
     </div>
   );
