@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 )
@@ -82,6 +83,14 @@ func (g *GitManager) AbortBranch(branchName string) error {
 }
 
 func SetupShadowWorkspace(sourcePath, workspacePath string) error {
+	if _, err := os.Stat(filepath.Join(workspacePath, ".git")); err == nil {
+		cleanCmd := exec.Command("git", "clean", "-fd")
+		cleanCmd.Dir = workspacePath
+		cleanCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		cleanCmd.Run()
+		return nil
+	}
+
 	_ = os.RemoveAll(workspacePath)
 	cmd := exec.Command("git", "clone", sourcePath, workspacePath)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}

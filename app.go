@@ -200,6 +200,24 @@ func (a *App) ApplyUpgrade(hash string, version string) error {
 		return fmt.Errorf("checkout failed: %v", err)
 	}
 
+	cwd, err := os.Getwd()
+	if err == nil {
+		fetchCmd := exec.Command("git", "fetch", workspacePath, hash)
+		fetchCmd.Dir = cwd
+		fetchCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		_ = fetchCmd.Run()
+
+		resetCmd := exec.Command("git", "reset", "--hard", hash)
+		resetCmd.Dir = cwd
+		resetCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		_ = resetCmd.Run()
+
+		tagsCmd := exec.Command("git", "fetch", workspacePath, "--tags")
+		tagsCmd.Dir = cwd
+		tagsCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		_ = tagsCmd.Run()
+	}
+
 	ldflags := fmt.Sprintf("-X main.CurrentCommit=%s -X main.CurrentVersion=%s", hash, version)
 
 	buildCmd := exec.Command("wails", "build", "-clean", "-ldflags", ldflags, "-o", "cria-upgrade.exe")
