@@ -36,6 +36,8 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
+	runtime.WindowShow(ctx)
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		cwd = "."
