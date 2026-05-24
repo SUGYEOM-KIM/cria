@@ -46,9 +46,8 @@ func (o *Orchestrator) Emit(event PipelineEvent) {
 
 func (o *Orchestrator) RunMock(task string, hitlChan chan HITLResponse) {
 	fmt.Printf("[PIPELINE] Starting mock pipeline for task: %s\n", task)
-	branchName := fmt.Sprintf("upgrade-%d", time.Now().Unix())
 
-	err := o.git.StartUpgradeBranch(branchName)
+	err := o.git.CheckoutUpgradeBranch()
 	if err != nil {
 		o.Emit(PipelineEvent{Type: "toast", Icon: "❌", Content: "Git setup failed"})
 		return
@@ -127,11 +126,11 @@ designLoop:
 	o.Emit(PipelineEvent{Type: "system_msg", Icon: "📝", Role: "Release Manager", Content: "Generated human-readable commit message based on task analysis."})
 
 	time.Sleep(1 * time.Second)
-	o.Emit(PipelineEvent{Type: "status", Content: "MERGING AND TAGGING..."})
+	o.Emit(PipelineEvent{Type: "status", Content: "COMMITTING TO cria-update..."})
 
-	err = o.git.CommitAndMerge(branchName, aiCommitMessage)
+	err = o.git.CommitOnBranch(aiCommitMessage)
 	if err != nil {
-		o.Emit(PipelineEvent{Type: "toast", Icon: "❌", Content: "Merge failed"})
+		o.Emit(PipelineEvent{Type: "toast", Icon: "❌", Content: "Commit failed"})
 		return
 	}
 

@@ -82,6 +82,37 @@ func (g *GitManager) AbortBranch(branchName string) error {
 	return err
 }
 
+const UpgradeBranchName = "cria-update"
+
+func (g *GitManager) CheckoutUpgradeBranch() error {
+	if _, err := g.execGit("show-ref", "--verify", "refs/heads/"+UpgradeBranchName); err != nil {
+		// Branch missing — create it from current HEAD.
+		if _, err := g.execGit("checkout", "-b", UpgradeBranchName); err != nil {
+			return fmt.Errorf("failed to create %s: %v", UpgradeBranchName, err)
+		}
+		return nil
+	}
+	if _, err := g.execGit("checkout", UpgradeBranchName); err != nil {
+		return fmt.Errorf("failed to checkout %s: %v", UpgradeBranchName, err)
+	}
+	return nil
+}
+
+func (g *GitManager) CommitOnBranch(commitMsg string) error {
+	if _, err := g.execGit("add", "."); err != nil {
+		return fmt.Errorf("git add failed: %v", err)
+	}
+	status, _ := g.execGit("status", "--porcelain")
+	if status == "" {
+		// Nothing to commit — treat as success.
+		return nil
+	}
+	if _, err := g.execGit("commit", "-m", commitMsg); err != nil {
+		return fmt.Errorf("git commit failed: %v", err)
+	}
+	return nil
+}
+
 func SetupShadowWorkspace(sourcePath, workspacePath string) error {
 	if _, err := os.Stat(filepath.Join(workspacePath, ".git")); err == nil {
 		cleanCmd := exec.Command("git", "clean", "-fd")
@@ -129,7 +160,7 @@ func (g *GitManager) RollbackToHash(hash string) error {
 }
 
 func (g *GitManager) GetUpgradeHistory() ([]UpgradeHistory, error) {
-	out, err := g.execGit("log", "--pretty=format:%H|%s|%cd|%D", "--date=format:%Y-%m-%d|%H:%M:%S", "-n", "30")
+	out, err := g.execGit("log", UpgradeBranchName, "--pretty=format:%H|%s|%cd|%D", "--date=format:%Y-%m-%d|%H:%M:%S", "-n", "30")
 	if err != nil {
 		return nil, err
 	}
