@@ -189,12 +189,6 @@ func (a *App) RollbackUpgrade(hash string) error {
 		return err
 	}
 
-	cwd, err := os.Getwd()
-	if err == nil {
-		gitMgrCwd := vcs.NewGitManager(cwd)
-		_ = gitMgrCwd.RollbackToHash(hash)
-	}
-
 	logging.Statef("rollback completed for hash=%s", hash)
 	return nil
 }
@@ -236,7 +230,7 @@ func (a *App) ApplyUpgrade(hash string, version string) error {
 	}
 	logging.Statef("execPath=%s", execPath)
 
-	if strings.HasSuffix(strings.ToLower(execPath), "-dev.exe") || CurrentCommit == "dev-mode-hash" {
+	if strings.HasSuffix(strings.ToLower(execPath), "-dev.exe") {
 		logging.Statef("ApplyUpgrade dev mode path: simulating restart")
 		a.SimulateApplyAndRestart(hash, version)
 		return nil
@@ -251,33 +245,6 @@ func (a *App) ApplyUpgrade(hash string, version string) error {
 	if err := checkoutCmd.Run(); err != nil {
 		logging.Errorf("ApplyUpgrade checkout failed: %v", err)
 		return fmt.Errorf("checkout failed: %v", err)
-	}
-
-	cwd, err := os.Getwd()
-	if err == nil {
-		logging.Statef("ApplyUpgrade syncing cwd=%s with workspace hash", cwd)
-		fetchCmd := exec.Command("git", "fetch", workspacePath, hash)
-		fetchCmd.Dir = cwd
-		fetchCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		if err := fetchCmd.Run(); err != nil {
-			logging.Errorf("cwd fetch: %v", err)
-		}
-
-		resetCmd := exec.Command("git", "reset", "--hard", hash)
-		resetCmd.Dir = cwd
-		resetCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		if err := resetCmd.Run(); err != nil {
-			logging.Errorf("cwd reset: %v", err)
-		}
-
-		tagsCmd := exec.Command("git", "fetch", workspacePath, "--tags")
-		tagsCmd.Dir = cwd
-		tagsCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		if err := tagsCmd.Run(); err != nil {
-			logging.Errorf("cwd tag fetch: %v", err)
-		}
-	} else {
-		logging.Errorf("os.Getwd for cwd sync: %v", err)
 	}
 
 	ldflags := fmt.Sprintf("-X main.CurrentCommit=%s -X main.CurrentVersion=%s", hash, version)

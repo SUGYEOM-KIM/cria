@@ -141,13 +141,15 @@ type UpgradeHistory struct {
 }
 
 func (g *GitManager) RollbackToHash(hash string) error {
+	g.execGit("checkout", UpgradeBranchName)
+
 	targetHash := hash + "^"
 
 	_, err := g.execGit("rev-parse", "--verify", targetHash)
 	if err != nil {
-		_, err = g.execGit("update-ref", "-d", "HEAD")
+		_, err = g.execGit("update-ref", "-d", "refs/heads/"+UpgradeBranchName)
 		if err != nil {
-			return fmt.Errorf("failed to delete HEAD ref: %v", err)
+			return fmt.Errorf("failed to delete branch ref: %v", err)
 		}
 		g.execGit("read-tree", "--empty")
 		g.execGit("clean", "-fdx")
@@ -158,6 +160,8 @@ func (g *GitManager) RollbackToHash(hash string) error {
 		return fmt.Errorf("git reset failed: %v", err)
 	}
 
+	g.execGit("reflog", "expire", "--expire=now", "--all")
+	g.execGit("gc", "--prune=now", "--aggressive")
 	g.execGit("clean", "-fd")
 	return nil
 }
