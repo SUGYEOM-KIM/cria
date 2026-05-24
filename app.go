@@ -11,26 +11,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime/debug"
 	"strings"
 	"syscall"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-var CurrentCommit string = "dev-mode-hash"
+var InitialCommit string = ""
+var CurrentCommit string = ""
 var CurrentVersion string = "v0.0.0"
-
-func init() {
-	if info, ok := debug.ReadBuildInfo(); ok {
-		for _, setting := range info.Settings {
-			if setting.Key == "vcs.revision" {
-				CurrentCommit = setting.Value
-				break
-			}
-		}
-	}
-}
 
 type App struct {
 	ctx       context.Context
@@ -46,7 +35,34 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	logging.Userf("app.startup CurrentCommit=%s CurrentVersion=%s", CurrentCommit, CurrentVersion)
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		cwd = "."
+	}
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = cwd
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	out, err := cmd.Output()
+	cwdHead := "dev-mode-hash"
+	if err == nil {
+		cwdHead = strings.TrimSpace(string(out))
+	}
+
+	if InitialCommit == "" {
+		InitialCommit = cwdHead
+	}
+	if CurrentCommit == "" {
+		CurrentCommit = cwdHead
+	}
+
+	logging.Userf("app.startup InitialCommit=%s CurrentCommit=%s CurrentVersion=%s", InitialCommit, CurrentCommit, CurrentVersion)
+
+	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
+	if _, err := os.Stat(filepath.Join(workspacePath, ".git")); os.IsNotExist(err) {
+		logging.Statef("workspace not found. creating shadow workspace at %s", workspacePath)
+		_ = vcs.SetupShadowWorkspace(cwd, workspacePath)
+	}
 
 	path := loadConfigPath()
 	if path != "" {
@@ -210,6 +226,11 @@ func (a *App) GetUpgradeHistory() []vcs.UpgradeHistory {
 	return history
 }
 
+func (a *App) GetInitialCommit() string {
+	logging.Debugf("GetInitialCommit -> %s", InitialCommit)
+	return InitialCommit
+}
+
 func (a *App) GetActiveCommit() string {
 	logging.Debugf("GetActiveCommit -> %s", CurrentCommit)
 	return CurrentCommit
@@ -247,7 +268,7 @@ func (a *App) ApplyUpgrade(hash string, version string) error {
 		return fmt.Errorf("checkout failed: %v", err)
 	}
 
-	ldflags := fmt.Sprintf("-X main.CurrentCommit=%s -X main.CurrentVersion=%s", hash, version)
+	ldflags := fmt.Sprintf("-X main.InitialCommit=%s -X main.CurrentCommit=%s -X main.CurrentVersion=%s", InitialCommit, hash, version)
 	logging.Statef("ApplyUpgrade running wails build with ldflags=%s", ldflags)
 
 	buildCmd := exec.Command("wails", "build", "-clean", "-ldflags", ldflags, "-o", "cria-upgrade.exe")
