@@ -11,6 +11,8 @@ import (
 	"syscall"
 )
 
+const UpgradeBranchName = "cria-update"
+
 type GitManager struct {
 	repoPath string
 }
@@ -87,11 +89,8 @@ func (g *GitManager) AbortBranch(branchName string) error {
 	return err
 }
 
-const UpgradeBranchName = "cria-update"
-
 func (g *GitManager) CheckoutUpgradeBranch() error {
 	if _, err := g.execGit("show-ref", "--verify", "refs/heads/"+UpgradeBranchName); err != nil {
-		// Branch missing — create it from current HEAD.
 		if _, err := g.execGit("checkout", "-b", UpgradeBranchName); err != nil {
 			return fmt.Errorf("failed to create %s: %v", UpgradeBranchName, err)
 		}
@@ -109,7 +108,6 @@ func (g *GitManager) CommitOnBranch(commitMsg string) error {
 	}
 	status, _ := g.execGit("status", "--porcelain")
 	if status == "" {
-		// Nothing to commit — treat as success.
 		return nil
 	}
 	if _, err := g.execGit("commit", "-m", commitMsg); err != nil {

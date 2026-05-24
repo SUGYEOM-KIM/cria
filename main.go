@@ -16,7 +16,7 @@ var assets embed.FS
 func main() {
 	logging.Init()
 	defer logging.Close()
-	logging.Infof("cria starting; log file at %s", logging.Path())
+	logging.Userf("process start; log file at %s", logging.Path())
 
 	app := NewApp()
 
@@ -38,4 +38,5 @@ func main() {
 		logging.Errorf("wails.Run returned error: %v", err)
 		println("Error:", err.Error())
 	}
+	logging.Userf("process exit")
 }

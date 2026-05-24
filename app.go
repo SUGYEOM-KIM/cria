@@ -34,34 +34,38 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	logging.Infof("Starting Cria agent...")
+	logging.Userf("app.startup CurrentCommit=%s CurrentVersion=%s", CurrentCommit, CurrentVersion)
 
 	path := loadConfigPath()
 	if path != "" {
 		os.Setenv("OLLAMA_MODELS", path)
+		logging.Statef("OLLAMA_MODELS set from config: %s", path)
 	} else if os.Getenv("OLLAMA_MODELS") == "" {
 		homeDir, err := os.UserHomeDir()
 		if err == nil {
 			globalModelsPath := filepath.Join(homeDir, ".ollama", "models")
 			os.Setenv("OLLAMA_MODELS", globalModelsPath)
 			saveConfigPath(globalModelsPath)
+			logging.Statef("OLLAMA_MODELS defaulted: %s", globalModelsPath)
 		}
 	}
 
 	go func() {
 		cmd, err := ollama.EnsureInstalledAndRun()
 		if err != nil {
-			logging.Errorf("Fatal error: %v", err)
+			logging.Errorf("ollama EnsureInstalledAndRun: %v", err)
 			return
 		}
 		a.serverCmd = cmd
+		logging.Statef("ollama runner started pid=%d", cmd.Process.Pid)
 	}()
 }
 
 func (a *App) shutdown(ctx context.Context) {
-	logging.Infof("Shutting down Cria...")
+	logging.Userf("app.shutdown")
 	if a.serverCmd != nil && a.serverCmd.Process != nil {
 		_ = a.serverCmd.Process.Kill()
+		logging.Statef("ollama runner killed")
 	}
 }
 
@@ -74,160 +78,201 @@ func (a *App) GetOllamaPath() string {
 }
 
 func (a *App) UpdateOllamaPath(newPath string) bool {
+	logging.Userf("UpdateOllamaPath newPath=%s", newPath)
 	os.Setenv("OLLAMA_MODELS", newPath)
 	saveConfigPath(newPath)
 
 	if a.serverCmd != nil && a.serverCmd.Process != nil {
 		_ = a.serverCmd.Process.Kill()
+		logging.Statef("ollama runner killed for restart")
 	}
 
 	go func() {
 		cmd, err := ollama.EnsureInstalledAndRun()
 		if err != nil {
+			logging.Errorf("ollama restart failed: %v", err)
 			return
 		}
 		a.serverCmd = cmd
+		logging.Statef("ollama runner restarted pid=%d", cmd.Process.Pid)
 	}()
 
 	return true
 }
 
 func (a *App) SelectFolder() string {
+	logging.Userf("SelectFolder dialog opened")
 	folder, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select Ollama Models Directory",
 	})
 	if err != nil {
+		logging.Errorf("SelectFolder dialog: %v", err)
 		return ""
 	}
+	logging.Userf("SelectFolder picked: %s", folder)
 	return folder
 }
 
 func (a *App) GetOllamaModels() []string {
-	return llm.FetchOllamaModels()
+	models := llm.FetchOllamaModels()
+	logging.Debugf("GetOllamaModels -> %d models", len(models))
+	return models
 }
 
 func (a *App) DownloadModel(modelName string) string {
+	logging.Userf("DownloadModel model=%s", modelName)
 	return llm.DownloadOllamaModel(a.ctx, modelName)
 }
 
 func (a *App) ChatWithModel(modelName string, prompt string) string {
+	logging.Userf("ChatWithModel model=%s promptLen=%d", modelName, len(prompt))
 	return llm.ChatWithOllama(modelName, prompt)
 }
 
 func (a *App) RemoveModel(modelName string) string {
+	logging.Userf("RemoveModel model=%s", modelName)
 	return llm.RemoveOllamaModel(modelName)
 }
 
 func (a *App) StartUpgradePipeline(task string) {
-	logging.Infof("[APP] StartUpgradePipeline initiated with task: %s", task)
+	logging.Userf("StartUpgradePipeline task=%q", task)
 	cwd, err := os.Getwd()
 	if err != nil {
 		cwd = "."
+		logging.Errorf("os.Getwd: %v (using .)", err)
 	}
 
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
-	logging.Infof("[APP] Workspace path: %s", workspacePath)
+	logging.Statef("workspace path: %s (cwd=%s)", workspacePath, cwd)
 
 	err = vcs.SetupShadowWorkspace(cwd, workspacePath)
 	if err != nil {
-		logging.Errorf("[APP] SetupShadowWorkspace failed: %v", err)
+		logging.Errorf("SetupShadowWorkspace: %v", err)
 		return
 	}
-	logging.Infof("[APP] Clone successful, starting orchestrator")
+	logging.Statef("workspace ready, launching orchestrator")
 
 	orc := pipeline.NewOrchestrator(a.ctx, workspacePath)
 	go orc.RunMock(task, a.hitlChan)
 }
 
 func (a *App) ApproveHITL() {
+	logging.Userf("ApproveHITL")
 	a.hitlChan <- pipeline.HITLResponse{Approved: true}
 }
 
 func (a *App) RejectHITL(feedback string) {
+	logging.Userf("RejectHITL feedback=%q", feedback)
 	a.hitlChan <- pipeline.HITLResponse{Approved: false, Feedback: feedback}
 }
 
 func (a *App) RollbackUpgrade(hash string) error {
-	logging.Infof("[APP] Rollback requested for hash: %s", hash)
+	logging.Userf("RollbackUpgrade hash=%s", hash)
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
 
 	gitMgr := vcs.NewGitManager(workspacePath)
 	err := gitMgr.RollbackToHash(hash)
 	if err != nil {
-		logging.Errorf("[APP] Rollback failed: %v", err)
+		logging.Errorf("RollbackToHash: %v", err)
 		return err
 	}
-
+	logging.Statef("rollback completed for hash=%s", hash)
 	return nil
 }
 
 func (a *App) GetUpgradeHistory() []vcs.UpgradeHistory {
+	logging.Userf("GetUpgradeHistory")
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
 
 	gitMgr := vcs.NewGitManager(workspacePath)
 	history, err := gitMgr.GetUpgradeHistory()
 	if err != nil {
-		logging.Errorf("[APP] Error fetching history: %v", err)
+		logging.Errorf("GetUpgradeHistory: %v", err)
 		return []vcs.UpgradeHistory{}
+	}
+	logging.Statef("history returned %d entries", len(history))
+	for i, h := range history {
+		logging.Debugf("  history[%d] hash=%s version=%s msg=%q", i, h.Hash, h.Version, h.Message)
 	}
 	return history
 }
 
 func (a *App) GetActiveCommit() string {
+	logging.Debugf("GetActiveCommit -> %s", CurrentCommit)
 	return CurrentCommit
 }
 
 func (a *App) GetActiveVersion() string {
+	logging.Debugf("GetActiveVersion -> %s", CurrentVersion)
 	return CurrentVersion
 }
 
 func (a *App) ApplyUpgrade(hash string, version string) error {
+	logging.Userf("ApplyUpgrade hash=%s version=%s", hash, version)
+
 	execPath, err := os.Executable()
 	if err != nil {
+		logging.Errorf("os.Executable: %v", err)
 		return err
 	}
+	logging.Statef("execPath=%s", execPath)
 
 	if strings.HasSuffix(strings.ToLower(execPath), "-dev.exe") || CurrentCommit == "dev-mode-hash" {
+		logging.Statef("ApplyUpgrade dev mode path: simulating restart")
 		a.SimulateApplyAndRestart(hash, version)
 		return nil
 	}
 
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
 
+	logging.Statef("ApplyUpgrade: checkout %s in %s", hash, workspacePath)
 	checkoutCmd := exec.Command("git", "checkout", hash)
 	checkoutCmd.Dir = workspacePath
 	checkoutCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	if err := checkoutCmd.Run(); err != nil {
+		logging.Errorf("ApplyUpgrade checkout failed: %v", err)
 		return fmt.Errorf("checkout failed: %v", err)
 	}
 
 	cwd, err := os.Getwd()
 	if err == nil {
+		logging.Statef("ApplyUpgrade syncing cwd=%s with workspace hash", cwd)
 		fetchCmd := exec.Command("git", "fetch", workspacePath, hash)
 		fetchCmd.Dir = cwd
 		fetchCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		_ = fetchCmd.Run()
+		if err := fetchCmd.Run(); err != nil {
+			logging.Errorf("cwd fetch: %v", err)
+		}
 
 		resetCmd := exec.Command("git", "reset", "--hard", hash)
 		resetCmd.Dir = cwd
 		resetCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		_ = resetCmd.Run()
+		if err := resetCmd.Run(); err != nil {
+			logging.Errorf("cwd reset: %v", err)
+		}
 
 		tagsCmd := exec.Command("git", "fetch", workspacePath, "--tags")
 		tagsCmd.Dir = cwd
 		tagsCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		_ = tagsCmd.Run()
+		if err := tagsCmd.Run(); err != nil {
+			logging.Errorf("cwd tag fetch: %v", err)
+		}
+	} else {
+		logging.Errorf("os.Getwd for cwd sync: %v", err)
 	}
 
 	ldflags := fmt.Sprintf("-X main.CurrentCommit=%s -X main.CurrentVersion=%s", hash, version)
+	logging.Statef("ApplyUpgrade running wails build with ldflags=%s", ldflags)
 
 	buildCmd := exec.Command("wails", "build", "-clean", "-ldflags", ldflags, "-o", "cria-upgrade.exe")
 	buildCmd.Dir = workspacePath
 	buildCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 
 	if out, err := buildCmd.CombinedOutput(); err != nil {
+		logging.Errorf("wails build failed: %v output=%s", err, string(out))
 		return fmt.Errorf("wails build failed: %v, output: %s", err, string(out))
 	}
+	logging.Statef("wails build completed")
 
 	newBinPath := filepath.Join(workspacePath, "build", "bin", "cria-upgrade.exe")
 	execDir := filepath.Dir(execPath)
@@ -235,22 +280,28 @@ func (a *App) ApplyUpgrade(hash string, version string) error {
 	oldExecPath := execPath + ".old"
 	_ = os.Remove(oldExecPath)
 	if err := os.Rename(execPath, oldExecPath); err != nil {
+		logging.Errorf("backup current binary: %v", err)
 		return fmt.Errorf("failed to backup current binary: %v", err)
 	}
+	logging.Statef("current binary backed up to %s", oldExecPath)
 
 	moveCmd := exec.Command("cmd", "/c", "move", "/Y", newBinPath, execPath)
 	moveCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	if err := moveCmd.Run(); err != nil {
 		_ = os.Rename(oldExecPath, execPath)
+		logging.Errorf("move new binary into place: %v (reverted)", err)
 		return fmt.Errorf("failed to move new binary: %v", err)
 	}
+	logging.Statef("new binary moved to %s", execPath)
 
 	newCmd := exec.Command(execPath)
 	newCmd.Dir = execDir
 	if err := newCmd.Start(); err != nil {
 		_ = os.Rename(oldExecPath, execPath)
+		logging.Errorf("restart new binary: %v (reverted)", err)
 		return fmt.Errorf("failed to restart application: %v", err)
 	}
+	logging.Statef("new binary started pid=%d, exiting current", newCmd.Process.Pid)
 
 	go func() {
 		os.Exit(0)
@@ -262,11 +313,13 @@ func (a *App) ApplyUpgrade(hash string, version string) error {
 func (a *App) GetLatestVersion() string {
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
 	gitMgr := vcs.NewGitManager(workspacePath)
-	return gitMgr.GetLatestTag()
+	v := gitMgr.GetLatestTag()
+	logging.Debugf("GetLatestVersion -> %s", v)
+	return v
 }
 
 func (a *App) SimulateApplyAndRestart(hash string, version string) {
-	logging.Infof("[APP] Simulating restart. Updating CurrentCommit to: %s, Version: %s", hash, version)
+	logging.Statef("SimulateApplyAndRestart hash=%s version=%s", hash, version)
 	CurrentCommit = hash
 	CurrentVersion = version
 }
