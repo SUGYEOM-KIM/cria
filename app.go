@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"cria/internal/llm"
+	"cria/internal/logging"
 	"cria/internal/ollama"
 	"cria/internal/pipeline"
 	"cria/internal/vcs"
@@ -33,7 +34,7 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	fmt.Println("Starting Cria agent...")
+	logging.Infof("Starting Cria agent...")
 
 	path := loadConfigPath()
 	if path != "" {
@@ -50,7 +51,7 @@ func (a *App) startup(ctx context.Context) {
 	go func() {
 		cmd, err := ollama.EnsureInstalledAndRun()
 		if err != nil {
-			fmt.Printf("Fatal error: %v\n", err)
+			logging.Errorf("Fatal error: %v", err)
 			return
 		}
 		a.serverCmd = cmd
@@ -58,7 +59,7 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) shutdown(ctx context.Context) {
-	fmt.Println("Shutting down Cria...")
+	logging.Infof("Shutting down Cria...")
 	if a.serverCmd != nil && a.serverCmd.Process != nil {
 		_ = a.serverCmd.Process.Kill()
 	}
@@ -118,21 +119,21 @@ func (a *App) RemoveModel(modelName string) string {
 }
 
 func (a *App) StartUpgradePipeline(task string) {
-	fmt.Println("[APP] StartUpgradePipeline initiated with task:", task)
+	logging.Infof("[APP] StartUpgradePipeline initiated with task: %s", task)
 	cwd, err := os.Getwd()
 	if err != nil {
 		cwd = "."
 	}
 
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
-	fmt.Println("[APP] Workspace path:", workspacePath)
+	logging.Infof("[APP] Workspace path: %s", workspacePath)
 
 	err = vcs.SetupShadowWorkspace(cwd, workspacePath)
 	if err != nil {
-		fmt.Printf("[APP] Error: SetupShadowWorkspace failed: %v\n", err)
+		logging.Errorf("[APP] SetupShadowWorkspace failed: %v", err)
 		return
 	}
-	fmt.Println("[APP] Clone successful, starting orchestrator")
+	logging.Infof("[APP] Clone successful, starting orchestrator")
 
 	orc := pipeline.NewOrchestrator(a.ctx, workspacePath)
 	go orc.RunMock(task, a.hitlChan)
@@ -147,13 +148,13 @@ func (a *App) RejectHITL(feedback string) {
 }
 
 func (a *App) RollbackUpgrade(hash string) error {
-	fmt.Println("[APP] Rollback requested for hash:", hash)
+	logging.Infof("[APP] Rollback requested for hash: %s", hash)
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
 
 	gitMgr := vcs.NewGitManager(workspacePath)
 	err := gitMgr.RollbackToHash(hash)
 	if err != nil {
-		fmt.Printf("[APP] Rollback failed: %v\n", err)
+		logging.Errorf("[APP] Rollback failed: %v", err)
 		return err
 	}
 
@@ -166,7 +167,7 @@ func (a *App) GetUpgradeHistory() []vcs.UpgradeHistory {
 	gitMgr := vcs.NewGitManager(workspacePath)
 	history, err := gitMgr.GetUpgradeHistory()
 	if err != nil {
-		fmt.Printf("[APP] Error fetching history: %v\n", err)
+		logging.Errorf("[APP] Error fetching history: %v", err)
 		return []vcs.UpgradeHistory{}
 	}
 	return history
@@ -265,7 +266,7 @@ func (a *App) GetLatestVersion() string {
 }
 
 func (a *App) SimulateApplyAndRestart(hash string, version string) {
-	fmt.Printf("[APP] Simulating restart. Updating CurrentCommit to: %s, Version: %s\n", hash, version)
+	logging.Infof("[APP] Simulating restart. Updating CurrentCommit to: %s, Version: %s", hash, version)
 	CurrentCommit = hash
 	CurrentVersion = version
 }

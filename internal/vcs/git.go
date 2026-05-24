@@ -2,6 +2,7 @@ package vcs
 
 import (
 	"bytes"
+	"cria/internal/logging"
 	"fmt"
 	"os"
 	"os/exec"
@@ -30,8 +31,12 @@ func (g *GitManager) execGit(args ...string) (string, error) {
 
 	err := cmd.Run()
 	if err != nil {
+		logging.Errorf("[GIT] %s: git %s -> %v; stderr=%s",
+			g.repoPath, strings.Join(args, " "), err, strings.TrimSpace(errBuf.String()))
 		return "", fmt.Errorf("%v: %s", err, errBuf.String())
 	}
+	logging.Debugf("[GIT] %s: git %s -> ok",
+		g.repoPath, strings.Join(args, " "))
 	return strings.TrimSpace(outBuf.String()), nil
 }
 
@@ -138,42 +143,29 @@ type UpgradeHistory struct {
 }
 
 func (g *GitManager) RollbackToHash(hash string) error {
-	if _, err := g.execGit("checkout", UpgradeBranchName); err != nil {
-		return fmt.Errorf("checkout %s failed: %v", UpgradeBranchName, err)
-	}
+	targetHash := hash + "^"
 
-	fullHash, err := g.execGit("rev-parse", "--verify", hash+"^{commit}")
+	_, err := g.execGit("rev-parse", "--verify", targetHash)
 	if err != nil {
-		return fmt.Errorf("commit %s not found: %v", hash, err)
+		_, err = g.execGit("update-ref", "-d", "HEAD")
+		if err != nil {
+			return fmt.Errorf("failed to delete HEAD ref: %v", err)
+		}
+		g.execGit("read-tree", "--empty")
+		g.execGit("clean", "-fdx")
+		return nil
 	}
 
-	tagsOut, _ := g.execGit("tag", "--list")
-	for _, tag := range strings.Split(tagsOut, "\n") {
-		tag = strings.TrimSpace(tag)
-		if tag == "" {
-			continue
-		}
-		tagCommit, err := g.execGit("rev-list", "-n", "1", tag)
-		if err != nil || tagCommit == "" || tagCommit == fullHash {
-			continue
-		}
-		if _, err := g.execGit("merge-base", "--is-ancestor", fullHash, tagCommit); err == nil {
-			g.execGit("tag", "-d", tag)
-		}
-	}
-
-	if _, err := g.execGit("reset", "--hard", fullHash); err != nil {
+	if _, err := g.execGit("reset", "--hard", targetHash); err != nil {
 		return fmt.Errorf("git reset failed: %v", err)
 	}
 
-	g.execGit("reflog", "expire", "--expire=now", "--all")
-	g.execGit("gc", "--prune=now", "--aggressive")
 	g.execGit("clean", "-fd")
 	return nil
 }
 
 func (g *GitManager) GetUpgradeHistory() ([]UpgradeHistory, error) {
-	out, err := g.execGit("log", UpgradeBranchName, "--pretty=format:%H|%s|%cd|%D", "--date=format:%Y-%m-%d|%H:%M:%S", "-n", "30")
+	out, err := g.execGit("log", "--pretty=format:%H|%s|%cd|%D", "--date=format:%Y-%m-%d|%H:%M:%S", "-n", "30")
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"cria/internal/logging"
 	"cria/internal/vcs"
 	"fmt"
 	"os"
@@ -45,10 +46,11 @@ func (o *Orchestrator) Emit(event PipelineEvent) {
 }
 
 func (o *Orchestrator) RunMock(task string, hitlChan chan HITLResponse) {
-	fmt.Printf("[PIPELINE] Starting mock pipeline for task: %s\n", task)
+	logging.Infof("[PIPELINE] Starting mock pipeline for task: %s", task)
 
 	err := o.git.CheckoutUpgradeBranch()
 	if err != nil {
+		logging.Errorf("[PIPELINE] CheckoutUpgradeBranch failed: %v", err)
 		o.Emit(PipelineEvent{Type: "toast", Icon: "❌", Content: "Git setup failed"})
 		return
 	}
@@ -130,11 +132,14 @@ designLoop:
 
 	err = o.git.CommitOnBranch(aiCommitMessage)
 	if err != nil {
+		logging.Errorf("[PIPELINE] CommitOnBranch failed: %v", err)
 		o.Emit(PipelineEvent{Type: "toast", Icon: "❌", Content: "Commit failed"})
 		return
 	}
 
-	o.git.CreateTag(newVersion)
+	if err := o.git.CreateTag(newVersion); err != nil {
+		logging.Errorf("[PIPELINE] CreateTag %s failed: %v", newVersion, err)
+	}
 
 	o.Emit(PipelineEvent{Type: "toast", Icon: "✅", Content: fmt.Sprintf("Mission Complete! Version %s released.", newVersion)})
 	o.Emit(PipelineEvent{Type: "complete", Content: ""})

@@ -3,6 +3,8 @@ package main
 import (
 	"embed"
 
+	"cria/internal/logging"
+
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -12,6 +14,10 @@ import (
 var assets embed.FS
 
 func main() {
+	logging.Init()
+	defer logging.Close()
+	logging.Infof("cria starting; log file at %s", logging.Path())
+
 	app := NewApp()
 
 	err := wails.Run(&options.App{
@@ -29,6 +35,7 @@ func main() {
 	})
 
 	if err != nil {
+		logging.Errorf("wails.Run returned error: %v", err)
 		println("Error:", err.Error())
 	}
 }
