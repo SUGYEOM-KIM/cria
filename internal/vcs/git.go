@@ -138,23 +138,36 @@ type UpgradeHistory struct {
 }
 
 func (g *GitManager) RollbackToHash(hash string) error {
-	targetHash := hash + "^"
-
-	_, err := g.execGit("rev-parse", "--verify", targetHash)
-	if err != nil {
-		_, err = g.execGit("update-ref", "-d", "HEAD")
-		if err != nil {
-			return fmt.Errorf("failed to delete HEAD ref: %v", err)
-		}
-		g.execGit("read-tree", "--empty")
-		g.execGit("clean", "-fdx")
-		return nil
+	if _, err := g.execGit("checkout", UpgradeBranchName); err != nil {
+		return fmt.Errorf("checkout %s failed: %v", UpgradeBranchName, err)
 	}
 
-	if _, err := g.execGit("reset", "--hard", targetHash); err != nil {
+	fullHash, err := g.execGit("rev-parse", "--verify", hash+"^{commit}")
+	if err != nil {
+		return fmt.Errorf("commit %s not found: %v", hash, err)
+	}
+
+	tagsOut, _ := g.execGit("tag", "--list")
+	for _, tag := range strings.Split(tagsOut, "\n") {
+		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			continue
+		}
+		tagCommit, err := g.execGit("rev-list", "-n", "1", tag)
+		if err != nil || tagCommit == "" || tagCommit == fullHash {
+			continue
+		}
+		if _, err := g.execGit("merge-base", "--is-ancestor", fullHash, tagCommit); err == nil {
+			g.execGit("tag", "-d", tag)
+		}
+	}
+
+	if _, err := g.execGit("reset", "--hard", fullHash); err != nil {
 		return fmt.Errorf("git reset failed: %v", err)
 	}
 
+	g.execGit("reflog", "expire", "--expire=now", "--all")
+	g.execGit("gc", "--prune=now", "--aggressive")
 	g.execGit("clean", "-fd")
 	return nil
 }
