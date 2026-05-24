@@ -2,7 +2,6 @@ package logging
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -17,6 +16,19 @@ var (
 	logPath  string
 )
 
+type safeWriter struct {
+	file *os.File
+}
+
+func (w *safeWriter) Write(p []byte) (n int, err error) {
+	if w.file != nil {
+		_, _ = w.file.Write(p)
+	}
+	_, _ = os.Stdout.Write(p)
+
+	return len(p), nil
+}
+
 func Init() {
 	initOnce.Do(func() {
 		logPath = filepath.Join(os.TempDir(), logFileName)
@@ -27,7 +39,8 @@ func Init() {
 			return
 		}
 		logFile = f
-		log.SetOutput(io.MultiWriter(os.Stdout, f))
+
+		log.SetOutput(&safeWriter{file: f})
 		log.SetFlags(log.LstdFlags | log.Lmicroseconds | log.Lshortfile)
 		log.Printf("=== cria log opened at %s ===", logPath)
 	})
