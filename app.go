@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"syscall"
 
@@ -19,6 +20,17 @@ import (
 
 var CurrentCommit string = "dev-mode-hash"
 var CurrentVersion string = "v0.0.0"
+
+func init() {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				CurrentCommit = setting.Value
+				break
+			}
+		}
+	}
+}
 
 type App struct {
 	ctx       context.Context
@@ -173,9 +185,16 @@ func (a *App) RollbackUpgrade(hash string) error {
 	gitMgr := vcs.NewGitManager(workspacePath)
 	err := gitMgr.RollbackToHash(hash)
 	if err != nil {
-		logging.Errorf("RollbackToHash: %v", err)
+		logging.Errorf("RollbackToHash workspace: %v", err)
 		return err
 	}
+
+	cwd, err := os.Getwd()
+	if err == nil {
+		gitMgrCwd := vcs.NewGitManager(cwd)
+		_ = gitMgrCwd.RollbackToHash(hash)
+	}
+
 	logging.Statef("rollback completed for hash=%s", hash)
 	return nil
 }
