@@ -26,6 +26,10 @@ export function GetActiveVersion() {
   return window['go']['main']['App']['GetActiveVersion']();
 }
 
+export function GetInitialCommit() {
+  return window['go']['main']['App']['GetInitialCommit']();
+}
+
 export function GetLatestVersion() {
   return window['go']['main']['App']['GetLatestVersion']();
 }

@@ -14,6 +14,8 @@ export function GetActiveCommit():Promise<string>;
 
 export function GetActiveVersion():Promise<string>;
 
+export function GetInitialCommit():Promise<string>;
+
 export function GetLatestVersion():Promise<string>;
 
 export function GetOllamaModels():Promise<Array<string>>;

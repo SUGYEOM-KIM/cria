@@ -12,7 +12,11 @@ interface UpgradeHistory {
   isAutoUpgrade: boolean;
 }
 
-const VersionHistoryView: React.FC = () => {
+interface Props {
+  onApplySuccess: () => void;
+}
+
+const VersionHistoryView: React.FC<Props> = ({ onApplySuccess }) => {
   const [history, setHistory] = useState<UpgradeHistory[]>([]);
   const [activeCommit, setActiveCommit] = useState<string>('');
   const [initialCommit, setInitialCommit] = useState<string>('');
@@ -72,7 +76,7 @@ const VersionHistoryView: React.FC = () => {
     try {
       const applyVersion = item.version || item.hash;
       await ApplyUpgrade(item.hash, applyVersion);
-      
+      onApplySuccess();
       setAlertContent({
         title: 'Application Rebuilt',
         message: `Version ${applyVersion} build triggered successfully. Restarting application...`

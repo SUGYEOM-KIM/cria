@@ -10,6 +10,7 @@ import './App.css';
 
 function App() {
   const [activeTab, setActiveTab] = useState('chat');
+  const [sidebarRefresh, setSidebarRefresh] = useState<number>(0);
   const [selectedModel, setSelectedModel] = useState('');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [downloadProgress, setDownloadProgress] = useState<Record<string, string>>({});
@@ -80,7 +81,7 @@ function App() {
       case 'upgrade':
         return <UpgradeView />;
       case 'history':
-        return <VersionHistoryView />;
+        return <VersionHistoryView onApplySuccess={() => setSidebarRefresh((prev: number) => prev + 1)} />;
       default:
         return null;
     }
@@ -88,7 +89,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} refreshKey={sidebarRefresh} />
       <main className="main-content">
         {renderContent()}
       </main>
