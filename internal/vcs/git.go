@@ -165,7 +165,11 @@ func (g *GitManager) RollbackToHash(hash string) error {
 }
 
 func (g *GitManager) GetUpgradeHistory() ([]UpgradeHistory, error) {
-	out, err := g.execGit("log", "--pretty=format:%H|%s|%cd|%D", "--date=format:%Y-%m-%d|%H:%M:%S", "-n", "30")
+	if _, err := g.execGit("show-ref", "--verify", "refs/heads/"+UpgradeBranchName); err != nil {
+		return []UpgradeHistory{}, nil
+	}
+
+	out, err := g.execGit("log", UpgradeBranchName, "--pretty=format:%H|%s|%cd|%D", "--date=format:%Y-%m-%d|%H:%M:%S", "-n", "30")
 	if err != nil {
 		return nil, err
 	}
