@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"cria/internal/logging"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -143,6 +144,10 @@ func processOutput(ctx context.Context, pipe io.ReadCloser, modelName string) {
 		} else {
 			runtime.EventsEmit(ctx, "download-progress-"+modelName, line)
 		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		logging.Errorf("scanner error for model %s: %v", modelName, err)
 	}
 }
 

@@ -91,7 +91,7 @@ func (a *App) startup(ctx context.Context) {
 	}()
 }
 
-func (a *App) shutdown(ctx context.Context) {
+func (a *App) shutdown(_ context.Context) {
 	logging.Userf("app.shutdown")
 	if a.serverCmd != nil && a.serverCmd.Process != nil {
 		_ = a.serverCmd.Process.Kill()
