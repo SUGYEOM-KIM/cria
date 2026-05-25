@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cria/internal/logging"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -116,19 +117,72 @@ func (g *GitManager) CommitOnBranch(commitMsg string) error {
 	return nil
 }
 
-func SetupShadowWorkspace(sourcePath, workspacePath string) error {
-	if _, err := os.Stat(filepath.Join(workspacePath, ".git")); err == nil {
-		cleanCmd := exec.Command("git", "clean", "-fd")
-		cleanCmd.Dir = workspacePath
-		cleanCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		cleanCmd.Run()
+func SetupShadowWorkspace(src, dest string) error {
+	err := filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() && info.Name() == ".git" {
+			return filepath.SkipDir
+		}
+
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		destPath := filepath.Join(dest, relPath)
+
+		if info.IsDir() {
+			return os.MkdirAll(destPath, info.Mode())
+		}
+
+		return copyFile(path, destPath)
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to copy workspace: %v", err)
+	}
+
+	if _, statErr := os.Stat(filepath.Join(dest, ".git")); statErr == nil {
 		return nil
 	}
 
-	_ = os.RemoveAll(workspacePath)
-	cmd := exec.Command("git", "clone", sourcePath, workspacePath)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	return cmd.Run()
+	cmds := [][]string{
+		{"git", "init"},
+		{"git", "config", "user.name", "Cria Agent"},
+		{"git", "config", "user.email", "cria@agent.local"},
+		{"git", "add", "."},
+		{"git", "commit", "-m", "Initial Workspace State"},
+	}
+
+	for _, args := range cmds {
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = dest
+		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("git %v failed: %v", args, err)
+		}
+	}
+
+	return nil
+}
+
+func copyFile(src, dest string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	return err
 }
 
 type UpgradeHistory struct {

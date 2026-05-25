@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"syscall"
 )
 
 type OllamaTagResponse struct {
@@ -46,6 +47,7 @@ func FetchOllamaModels() []string {
 
 func DownloadOllamaModel(ctx context.Context, modelName string) string {
 	cmd := exec.CommandContext(ctx, "ollama", "pull", modelName)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -79,6 +81,7 @@ func ChatWithOllama(modelName string, prompt string) string {
 
 func RemoveOllamaModel(modelName string) string {
 	cmd := exec.Command("ollama", "rm", modelName)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

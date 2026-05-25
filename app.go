@@ -7,6 +7,7 @@ import (
 	"cria/internal/ollama"
 	"cria/internal/pipeline"
 	"cria/internal/vcs"
+	_ "embed"
 	"fmt"
 	"os"
 	"os/exec"
@@ -17,6 +18,8 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
+//go:embed source.zip
+var sourceZip []byte
 var InitialCommit string = ""
 var CurrentCommit string = ""
 var CurrentVersion string = "v0.0.0"
@@ -62,8 +65,8 @@ func (a *App) startup(ctx context.Context) {
 
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
 	if _, err := os.Stat(filepath.Join(workspacePath, ".git")); os.IsNotExist(err) {
-		logging.Statef("workspace not found. creating shadow workspace at %s", workspacePath)
-		_ = vcs.SetupShadowWorkspace(cwd, workspacePath)
+		logging.Statef("workspace not found. extracting embedded source to %s", workspacePath)
+		_ = vcs.SetupWorkspaceFromZip(sourceZip, workspacePath)
 	}
 
 	path := loadConfigPath()

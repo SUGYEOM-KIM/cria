@@ -6,6 +6,9 @@
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
+  "preBuildHooks": {
+    "*/*": "git -C ../.. archive --format zip --output source.zip HEAD"
+  },
   "author": {
     "name": "sugyeom",
     "email": "gmong4109@gmail.com"
