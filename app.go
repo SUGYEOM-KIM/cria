@@ -41,30 +41,24 @@ func (a *App) startup(ctx context.Context) {
 
 	runtime.WindowShow(ctx)
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		cwd = "."
-	}
-	cmd := exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = cwd
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	out, err := cmd.Output()
-	cwdHead := "dev-mode-hash"
-	if err == nil {
-		cwdHead = strings.TrimSpace(string(out))
-	}
-
-	if CurrentCommit == "" {
-		CurrentCommit = cwdHead
-	}
-
-	logging.Userf("app.startup CurrentCommit=%s CurrentVersion=%s", CurrentCommit, CurrentVersion)
-
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
 	if _, err := os.Stat(filepath.Join(workspacePath, ".git")); os.IsNotExist(err) {
 		logging.Statef("workspace not found. extracting embedded source to %s", workspacePath)
 		_ = vcs.SetupWorkspaceFromZip(sourceZip, workspacePath)
 	}
+
+	if CurrentCommit == "" {
+		workspaceHead := "dev-mode-hash"
+		headCmd := exec.Command("git", "rev-parse", "HEAD")
+		headCmd.Dir = workspacePath
+		headCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		if out, err := headCmd.Output(); err == nil {
+			workspaceHead = strings.TrimSpace(string(out))
+		}
+		CurrentCommit = workspaceHead
+	}
+
+	logging.Userf("app.startup CurrentCommit=%s CurrentVersion=%s", CurrentCommit, CurrentVersion)
 
 	path := loadConfigPath()
 	if path != "" {
