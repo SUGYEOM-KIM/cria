@@ -43,53 +43,6 @@ func (g *GitManager) execGit(args ...string) (string, error) {
 	return strings.TrimSpace(outBuf.String()), nil
 }
 
-func (g *GitManager) InitIfNeeded() error {
-	g.execGit("config", "user.name", "Cria Agent")
-	g.execGit("config", "user.email", "cria@agent.local")
-
-	_, err := g.execGit("rev-parse", "--is-inside-work-tree")
-	if err != nil {
-		if _, err := g.execGit("init"); err != nil {
-			return err
-		}
-		if _, err := g.execGit("add", "."); err != nil {
-			return err
-		}
-		if _, err := g.execGit("commit", "-m", "Initial baseline"); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (g *GitManager) StartUpgradeBranch(branchName string) error {
-	rawBranch, err := g.execGit("rev-parse", "--abbrev-ref", "HEAD")
-	if err != nil {
-		return err
-	}
-	currentBranch := strings.TrimSpace(rawBranch)
-
-	if _, err := g.execGit("checkout", currentBranch); err != nil {
-		return err
-	}
-
-	if _, err := g.execGit("reset", "--hard"); err != nil {
-		return err
-	}
-
-	if _, err := g.execGit("checkout", "-b", branchName); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (g *GitManager) AbortBranch(branchName string) error {
-	g.execGit("reset", "--hard")
-	g.execGit("checkout", "main")
-	_, err := g.execGit("branch", "-D", branchName)
-	return err
-}
-
 func (g *GitManager) CheckoutUpgradeBranch() error {
 	if _, err := g.execGit("show-ref", "--verify", "refs/heads/"+UpgradeBranchName); err != nil {
 		if _, err := g.execGit("checkout", "-b", UpgradeBranchName); err != nil {
@@ -288,37 +241,4 @@ func (g *GitManager) GetLatestTag() string {
 func (g *GitManager) CreateTag(version string) error {
 	_, err := g.execGit("tag", "-f", version)
 	return err
-}
-
-func (g *GitManager) CommitAndMerge(branchName, commitMsg string) error {
-	if _, err := g.execGit("add", "."); err != nil {
-		return fmt.Errorf("git add failed: %v", err)
-	}
-
-	status, _ := g.execGit("status", "--porcelain")
-	if status != "" {
-		if _, err := g.execGit("commit", "-m", commitMsg); err != nil {
-			return fmt.Errorf("git commit failed: %v", err)
-		}
-	}
-
-	targetBranch := "main"
-	if _, err := g.execGit("show-ref", "--verify", "refs/heads/main"); err != nil {
-		targetBranch = "master"
-	}
-
-	if _, err := g.execGit("checkout", targetBranch); err != nil {
-		return fmt.Errorf("checkout %s failed: %v", targetBranch, err)
-	}
-
-	if _, err := g.execGit("merge", branchName); err != nil {
-		return fmt.Errorf("merge failed: %v", err)
-	}
-
-	g.execGit("branch", "-D", branchName)
-	return nil
-}
-
-func (g *GitManager) GetRootCommitHash() (string, error) {
-	return g.execGit("rev-list", "--max-parents=0", "HEAD")
 }

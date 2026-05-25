@@ -110,10 +110,6 @@ func (a *App) shutdown(_ context.Context) {
 	}
 }
 
-func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello %s, It's show time!", name)
-}
-
 func (a *App) GetOllamaPath() string {
 	return os.Getenv("OLLAMA_MODELS")
 }
@@ -277,8 +273,9 @@ func (a *App) ApplyUpgrade(hash string, version string) error {
 	logging.Statef("execPath=%s", execPath)
 
 	if strings.HasSuffix(strings.ToLower(execPath), "-dev.exe") {
-		logging.Statef("ApplyUpgrade dev mode path: simulating restart")
-		a.SimulateApplyAndRestart(hash, version)
+		logging.Statef("ApplyUpgrade dev mode: simulating restart hash=%s version=%s", hash, version)
+		CurrentCommit = hash
+		CurrentVersion = version
 		return nil
 	}
 
@@ -345,18 +342,4 @@ func (a *App) ApplyUpgrade(hash string, version string) error {
 	}()
 
 	return nil
-}
-
-func (a *App) GetLatestVersion() string {
-	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
-	gitMgr := vcs.NewGitManager(workspacePath)
-	v := gitMgr.GetLatestTag()
-	logging.Debugf("GetLatestVersion -> %s", v)
-	return v
-}
-
-func (a *App) SimulateApplyAndRestart(hash string, version string) {
-	logging.Statef("SimulateApplyAndRestart hash=%s version=%s", hash, version)
-	CurrentCommit = hash
-	CurrentVersion = version
 }

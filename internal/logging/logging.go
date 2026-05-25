@@ -59,10 +59,6 @@ func Path() string {
 	return logPath
 }
 
-func Infof(format string, args ...interface{}) {
-	log.Output(2, "[INFO] "+fmt.Sprintf(format, args...))
-}
-
 func Errorf(format string, args ...interface{}) {
 	log.Output(2, "[ERROR] "+fmt.Sprintf(format, args...))
 }

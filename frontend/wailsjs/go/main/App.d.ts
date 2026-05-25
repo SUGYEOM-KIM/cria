@@ -16,15 +16,11 @@ export function GetActiveVersion():Promise<string>;
 
 export function GetInitialCommit():Promise<string>;
 
-export function GetLatestVersion():Promise<string>;
-
 export function GetOllamaModels():Promise<Array<string>>;
 
 export function GetOllamaPath():Promise<string>;
 
 export function GetUpgradeHistory():Promise<Array<vcs.UpgradeHistory>>;
-
-export function Greet(arg1:string):Promise<string>;
 
 export function RejectHITL(arg1:string):Promise<void>;
 
@@ -33,8 +29,6 @@ export function RemoveModel(arg1:string):Promise<string>;
 export function RollbackUpgrade(arg1:string):Promise<void>;
 
 export function SelectFolder():Promise<string>;
-
-export function SimulateApplyAndRestart(arg1:string,arg2:string):Promise<void>;
 
 export function StartUpgradePipeline(arg1:string):Promise<void>;
 

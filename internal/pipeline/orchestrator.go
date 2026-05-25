@@ -109,9 +109,6 @@ designLoop:
 	time.Sleep(1 * time.Second)
 
 	currentVersion := o.git.GetLatestTag()
-	if currentVersion == "" {
-		currentVersion = "v0.0.0"
-	}
 	logging.Statef("pipeline current version detected: %s", currentVersion)
 
 	o.Emit(PipelineEvent{Type: "system_msg", Icon: "🤖", Role: "Release Manager", Content: fmt.Sprintf("Current version detected: %s", currentVersion)})

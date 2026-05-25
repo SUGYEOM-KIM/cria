@@ -30,10 +30,6 @@ export function GetInitialCommit() {
   return window['go']['main']['App']['GetInitialCommit']();
 }
 
-export function GetLatestVersion() {
-  return window['go']['main']['App']['GetLatestVersion']();
-}
-
 export function GetOllamaModels() {
   return window['go']['main']['App']['GetOllamaModels']();
 }
@@ -44,10 +40,6 @@ export function GetOllamaPath() {
 
 export function GetUpgradeHistory() {
   return window['go']['main']['App']['GetUpgradeHistory']();
-}
-
-export function Greet(arg1) {
-  return window['go']['main']['App']['Greet'](arg1);
 }
 
 export function RejectHITL(arg1) {
@@ -64,10 +56,6 @@ export function RollbackUpgrade(arg1) {
 
 export function SelectFolder() {
   return window['go']['main']['App']['SelectFolder']();
-}
-
-export function SimulateApplyAndRestart(arg1, arg2) {
-  return window['go']['main']['App']['SimulateApplyAndRestart'](arg1, arg2);
 }
 
 export function StartUpgradePipeline(arg1) {
