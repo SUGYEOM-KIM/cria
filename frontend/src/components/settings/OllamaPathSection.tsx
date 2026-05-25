@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GetOllamaPath, UpdateOllamaPath, SelectFolder } from '../../../wailsjs/go/main/App';
+import { EventsOnce } from '../../../wailsjs/runtime/runtime';
 import './Settings.css';
 
 interface OllamaPathSectionProps {
@@ -34,23 +35,32 @@ const OllamaPathSection: React.FC<OllamaPathSectionProps> = ({ fetchModels }) =>
         }
     };
 
-    const showToast = (message: string) => {
+    const showToast = (message: string, durationMs: number = 3000) => {
         setToastMessage(message);
         setIsToastVisible(true);
-        setTimeout(() => {
-            setIsToastVisible(false);
-        }, 3000);
+        if (durationMs > 0) {
+            setTimeout(() => {
+                setIsToastVisible(false);
+            }, durationMs);
+        }
     };
 
     const handleSavePath = async () => {
         try {
             const success = await UpdateOllamaPath(ollamaPath);
-            if (success) {
-                showToast('Settings saved. Restarting Ollama engine...');
-                setTimeout(() => {
-                    fetchModels();
-                }, 3000);
-            }
+            if (!success) return;
+
+            showToast('Restarting Ollama engine...', 0);
+
+            let resolved = false;
+            const finish = (toastMsg: string) => {
+                if (resolved) return;
+                resolved = true;
+                showToast(toastMsg);
+            };
+
+            EventsOnce('ollama-ready', () => finish('Settings saved.'));
+            setTimeout(() => finish('Settings saved (timed out waiting for engine).'), 30000);
         } catch (err) {
             console.error(err);
         }

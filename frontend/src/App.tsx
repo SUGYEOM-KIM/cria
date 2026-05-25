@@ -22,12 +22,12 @@ function App() {
       const models = await GetOllamaModels();
       if (models && models.length > 0) {
         setAvailableModels(models);
-        if (!selectedModel || !models.includes(selectedModel)) {
+        if (!selectedModel || selectedModel === 'No models available' || !models.includes(selectedModel)) {
           setSelectedModel(models[0]);
         }
       } else {
-        setAvailableModels(['No models available']);
-        setSelectedModel('No models available');
+        setAvailableModels(prev => (prev.length > 0 && prev[0] !== 'No models available') ? prev : ['No models available']);
+        setSelectedModel(prev => prev || 'No models available');
       }
     } catch (err) {
       console.error(err);
@@ -37,6 +37,10 @@ function App() {
   useEffect(() => {
     fetchModels();
 
+    EventsOn('ollama-ready', () => {
+      fetchModels();
+    });
+
     popularModels.forEach(model => {
       EventsOn(`download-progress-${model}`, (data) => {
         setDownloadProgress(prev => ({ ...prev, [model]: data }));
@@ -44,6 +48,7 @@ function App() {
     });
 
     return () => {
+      EventsOff('ollama-ready');
       popularModels.forEach(model => {
         EventsOff(`download-progress-${model}`);
       });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RemoveModel } from '../../../wailsjs/go/main/App';
 import OllamaPathSection from './OllamaPathSection';
 import CustomModelPull from './CustomModelPull';
@@ -26,6 +26,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modelToRemove, setModelToRemove] = useState('');
   const [isRemoving, setIsRemoving] = useState(false);
+
+  useEffect(() => {
+    fetchModels();
+  }, []);
 
   const handleRemoveModelRequest = (modelName: string) => {
     const exactName = availableModels.find(m => m === modelName || m.startsWith(modelName + ':')) || modelName;

@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -91,6 +92,13 @@ func (a *App) startup(ctx context.Context) {
 		}
 		a.serverCmd = cmd
 		logging.Statef("ollama runner started pid=%d", cmd.Process.Pid)
+
+		if llm.WaitForReady(a.ctx, 30*time.Second) {
+			logging.Statef("ollama ready, emitting ollama-ready")
+			runtime.EventsEmit(a.ctx, "ollama-ready")
+		} else {
+			logging.Errorf("ollama did not become ready within timeout")
+		}
 	}()
 }
 
@@ -128,6 +136,13 @@ func (a *App) UpdateOllamaPath(newPath string) bool {
 		}
 		a.serverCmd = cmd
 		logging.Statef("ollama runner restarted pid=%d", cmd.Process.Pid)
+
+		if llm.WaitForReady(a.ctx, 30*time.Second) {
+			logging.Statef("ollama ready after restart, emitting ollama-ready")
+			runtime.EventsEmit(a.ctx, "ollama-ready")
+		} else {
+			logging.Errorf("ollama did not become ready within timeout after restart")
+		}
 	}()
 
 	return true
@@ -148,6 +163,11 @@ func (a *App) SelectFolder() string {
 
 func (a *App) GetOllamaModels() []string {
 	models := llm.FetchOllamaModels()
+	if len(models) == 0 {
+		if llm.WaitForReady(a.ctx, 2*time.Second) {
+			models = llm.FetchOllamaModels()
+		}
+	}
 	logging.Debugf("GetOllamaModels -> %d models", len(models))
 	return models
 }
