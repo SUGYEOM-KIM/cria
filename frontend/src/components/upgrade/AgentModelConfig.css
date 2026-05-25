@@ -1,10 +1,13 @@
 .agent-config-container {
-  background: #1e1e1e;
+  background: #ffffff;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
-  border: 1px solid #333;
+  border: 1px solid #e1dacb;
   animation: slideDownFade 0.3s ease-out;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 4px 12px rgba(43, 39, 34, 0.03);
 }
 
 @keyframes slideDownFade {
@@ -12,29 +15,18 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-.agent-config-header h3 {
-  color: #fff;
-  font-size: 18px;
-  margin-bottom: 4px;
-}
-
-.agent-config-header p {
-  color: #a0a0a0;
-  font-size: 13px;
-  margin-bottom: 20px;
-}
-
 .agent-character-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 16px;
+  width: 100%;
 }
 
 .agent-character-card {
-  background: #252526;
+  background: #fdfbf7;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid #333;
+  border: 1px solid #e1dacb;
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
   display: flex;
   flex-direction: column;
@@ -42,12 +34,12 @@
 
 .agent-character-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-  border-color: #555;
+  box-shadow: 0 8px 20px rgba(43, 39, 34, 0.08);
+  border-color: #cbbfae;
 }
 
 .character-avatar-box {
-  height: 140px;
+  height: 100px;
   width: 100%;
   display: flex;
   align-items: center;
@@ -63,12 +55,12 @@
   left: 0;
   right: 0;
   height: 40%;
-  background: linear-gradient(to top, #252526, transparent);
+  background: linear-gradient(to top, #fdfbf7, transparent);
 }
 
 .character-avatar-placeholder {
-  color: rgba(255,255,255,0.2);
-  font-size: 24px;
+  color: rgba(255,255,255,0.5);
+  font-size: 28px;
   font-weight: 900;
   letter-spacing: 2px;
 }
@@ -81,14 +73,14 @@
 }
 
 .agent-card-title {
-  color: #fff;
+  color: #2b2722;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
   margin-bottom: 4px;
 }
 
 .agent-card-role {
-  color: #858585;
+  color: #706558;
   font-size: 12px;
   margin-bottom: 16px;
   font-weight: 500;
@@ -102,22 +94,23 @@
 
 .agent-model-select {
   width: 100%;
-  background: #1e1e1e;
-  color: #d4d4d4;
-  border: 1px solid #444;
+  background: #ffffff;
+  color: #2b2722;
+  border: 1px solid #e1dacb;
   padding: 8px 12px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 12px;
   outline: none;
   appearance: none;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
 }
 
 .agent-model-select:hover {
-  border-color: #666;
+  border-color: #cbbfae;
 }
 
 .agent-model-select:focus {
-  border-color: #007acc;
+  border-color: #76695b;
+  box-shadow: 0 0 0 2px rgba(118, 105, 91, 0.1);
 }

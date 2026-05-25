@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
 import { StartUpgradePipeline, ApproveHITL, RejectHITL, GetOllamaModels } from '../../../wailsjs/go/main/App';
 import AgentModelConfig from './AgentModelConfig';
+import AlertDialog from '../common/AlertDialog';
 
 interface PipelineEvent {
     type: 'status' | 'system_msg' | 'toast' | 'message' | 'hitl' | 'sound';
@@ -28,14 +29,19 @@ const UpgradeView: React.FC = () => {
     const [feedbackText, setFeedbackText] = useState('');
     const [showRejectForm, setShowRejectForm] = useState(false);
 
+    const [alertOpen, setAlertOpen] = useState(false);
+    const [alertTitle, setAlertTitle] = useState('');
+    const [alertMessage, setAlertMessage] = useState('');
+
     const logEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const fetchModels = async () => {
             try {
                 const models = await GetOllamaModels();
-                setAvailableModels(models);
+                setAvailableModels(models || []);
             } catch (err) {
+                setAvailableModels([]);
             }
         };
         fetchModels();
@@ -52,9 +58,16 @@ const UpgradeView: React.FC = () => {
                 if (content.includes('DESIGN')) setCurrentStage(0);
                 else if (content.includes('IMPLEMENTATION')) setCurrentStage(1);
                 else if (content.includes('INTEGRATION')) setCurrentStage(2);
-            } else if (event.type === 'toast' && event.content?.includes('Complete')) {
-                setCurrentStage(3);
-                setIsRunning(false);
+            } else if (event.type === 'toast') {
+                if (event.content?.includes('Complete')) {
+                    setCurrentStage(3);
+                    setIsRunning(false);
+                } else if (event.icon === '❌') {
+                    setIsRunning(false);
+                    setAlertTitle('Pipeline Error');
+                    setAlertMessage(event.content || 'An error occurred during the pipeline execution.');
+                    setAlertOpen(true);
+                }
             } else if (event.type === 'hitl') {
                 setAwaitingApproval(true);
                 setShowRejectForm(false);
@@ -77,6 +90,14 @@ const UpgradeView: React.FC = () => {
 
     const handleStart = async () => {
         if (!task.trim()) return;
+
+        if (availableModels.length === 0) {
+            setAlertTitle('No Models Found');
+            setAlertMessage('Please download at least one model in the Settings menu before running the pipeline.');
+            setAlertOpen(true);
+            return;
+        }
+
         setIsRunning(true);
         setLogs([]);
         setCurrentStage(0);
@@ -241,6 +262,13 @@ const UpgradeView: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            <AlertDialog
+                isOpen={alertOpen}
+                title={alertTitle}
+                message={alertMessage}
+                onClose={() => setAlertOpen(false)}
+            />
         </div>
     );
 };

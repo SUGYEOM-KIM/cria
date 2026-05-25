@@ -115,27 +115,30 @@ func (a *App) UpdateOllamaPath(newPath string) bool {
 
 	if a.serverCmd != nil && a.serverCmd.Process != nil {
 		_ = a.serverCmd.Process.Kill()
-		logging.Statef("ollama runner killed for restart")
 	}
 
-	go func() {
-		cmd, err := ollama.EnsureInstalledAndRun()
-		if err != nil {
-			logging.Errorf("ollama restart failed: %v", err)
-			return
-		}
-		a.serverCmd = cmd
-		logging.Statef("ollama runner restarted pid=%d", cmd.Process.Pid)
+	_ = exec.Command("taskkill", "/F", "/IM", "ollama.exe").Run()
+	_ = exec.Command("taskkill", "/F", "/IM", "ollama app.exe").Run()
 
-		if llm.WaitForReady(a.ctx, 30*time.Second) {
-			logging.Statef("ollama ready after restart, emitting ollama-ready")
-			runtime.EventsEmit(a.ctx, "ollama-ready")
-		} else {
-			logging.Errorf("ollama did not become ready within timeout after restart")
-		}
-	}()
+	logging.Statef("force killed background ollama processes. waiting for port 11434 release...")
+	time.Sleep(1 * time.Second)
 
-	return true
+	cmd, err := ollama.EnsureInstalledAndRun()
+	if err != nil {
+		logging.Errorf("ollama restart failed: %v", err)
+		return false
+	}
+	a.serverCmd = cmd
+	logging.Statef("ollama runner restarted pid=%d", cmd.Process.Pid)
+
+	if llm.WaitForReady(a.ctx, 30*time.Second) {
+		logging.Statef("ollama ready after restart, emitting ollama-ready")
+		runtime.EventsEmit(a.ctx, "ollama-ready")
+		return true
+	} else {
+		logging.Errorf("ollama did not become ready within timeout after restart")
+		return false
+	}
 }
 
 func (a *App) SelectFolder() string {
@@ -159,6 +162,10 @@ func (a *App) GetOllamaModels() []string {
 		}
 	}
 	logging.Debugf("GetOllamaModels -> %d models", len(models))
+
+	if models == nil {
+		return []string{}
+	}
 	return models
 }
 
@@ -177,21 +184,49 @@ func (a *App) RemoveModel(modelName string) string {
 	return llm.RemoveOllamaModel(modelName)
 }
 
+type appLLMCaller struct {
+	app *App
+}
+
+func (c *appLLMCaller) Chat(model, system, user string) (string, error) {
+	fullPrompt := system + "\n\n" + user
+	res := c.app.ChatWithModel(model, fullPrompt)
+	return res, nil
+}
+
 func (a *App) StartUpgradePipeline(task string) {
 	logging.Userf("StartUpgradePipeline task=%q", task)
 
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
-	logging.Statef("setting up workspace from embedded zip: %s", workspacePath)
 
-	err := vcs.SetupWorkspaceFromZip(sourceZip, workspacePath)
-	if err != nil {
-		logging.Errorf("SetupWorkspaceFromZip: %v", err)
-		return
+	if _, err := os.Stat(filepath.Join(workspacePath, ".git")); os.IsNotExist(err) {
+		logging.Statef("workspace not found. extracting embedded source to %s", workspacePath)
+		err := vcs.SetupWorkspaceFromZip(sourceZip, workspacePath)
+		if err != nil {
+			logging.Errorf("SetupWorkspaceFromZip: %v", err)
+			return
+		}
 	}
+
 	logging.Statef("workspace ready, launching orchestrator")
 
+	models := a.GetOllamaModels()
+	if len(models) == 0 {
+		logging.Errorf("No Ollama models found. Cannot start pipeline.")
+		runtime.EventsEmit(a.ctx, "pipeline-event", pipeline.PipelineEvent{
+			Type:    "toast",
+			Icon:    "❌",
+			Content: "No Ollama models found. Please download a model in Settings first.",
+		})
+		return
+	}
+	defaultModel := models[0]
+	logging.Statef("Using model: %s", defaultModel)
+
+	llmCaller := &appLLMCaller{app: a}
+
 	registry := pipeline.AgentRegistry{
-		Architect:         agent.NewMockArchitect(),
+		Architect:         agent.NewLLMArchitect(llmCaller, defaultModel),
 		DesignCritic:      agent.NewMockDesignCritic(),
 		UnitPlanner:       agent.NewMockGeneric("Unit Planner", "📅"),
 		PlanCritic:        agent.NewMockGeneric("Plan Critic", "📋"),
