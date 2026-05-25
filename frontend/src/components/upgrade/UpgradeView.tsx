@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime';
-import { StartUpgradePipeline, ApproveHITL, RejectHITL, GetOllamaModels } from '../../../wailsjs/go/main/App';
+import { StartUpgradePipeline, ApproveHITL, RejectHITL, GetOllamaModels, TranslateText, LogClientEvent, GetAgentModels, SaveAgentModels } from '../../../wailsjs/go/main/App';
 import AgentModelConfig from './AgentModelConfig';
 import AlertDialog from '../common/AlertDialog';
 
@@ -26,10 +26,14 @@ const UpgradeView: React.FC = () => {
     const [showConfig, setShowConfig] = useState(false);
     const [availableModels, setAvailableModels] = useState<string[]>([]);
     const [agentModels, setAgentModels] = useState<Record<string, string>>({});
+    const [agentModelsLoaded, setAgentModelsLoaded] = useState(false);
 
     const [feedbackText, setFeedbackText] = useState('');
     const [showRejectForm, setShowRejectForm] = useState(false);
     const [expandedSpecs, setExpandedSpecs] = useState<Record<number, boolean>>({});
+    const [specTranslations, setSpecTranslations] = useState<Record<number, string>>({});
+    const [translatingSpecs, setTranslatingSpecs] = useState<Record<number, boolean>>({});
+    const [showTranslation, setShowTranslation] = useState<Record<number, boolean>>({});
 
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertTitle, setAlertTitle] = useState('');
@@ -37,17 +41,48 @@ const UpgradeView: React.FC = () => {
 
     const logEndRef = useRef<HTMLDivElement>(null);
 
+    const logEvent = (msg: string, level: string = 'user') => {
+        LogClientEvent(level, `[UpgradeView] ${msg}`).catch(() => { });
+    };
+
     useEffect(() => {
         const fetchModels = async () => {
             try {
                 const models = await GetOllamaModels();
                 setAvailableModels(models || []);
+                logEvent(`models loaded count=${(models || []).length}`, 'debug');
             } catch (err) {
                 setAvailableModels([]);
+                logEvent(`models load failed: ${String(err)}`, 'error');
+            }
+        };
+        const fetchAgentModels = async () => {
+            try {
+                const saved = await GetAgentModels();
+                setAgentModels(saved || {});
+                logEvent(`agent models loaded entries=${Object.keys(saved || {}).length}`, 'debug');
+            } catch (err) {
+                setAgentModels({});
+                logEvent(`agent models load failed: ${String(err)}`, 'error');
+            } finally {
+                setAgentModelsLoaded(true);
             }
         };
         fetchModels();
+        fetchAgentModels();
     }, []);
+
+    useEffect(() => {
+        if (!agentModelsLoaded) return;
+        const handle = setTimeout(() => {
+            logEvent(`SaveAgentModels triggered entries=${Object.keys(agentModels).length}`, 'state');
+            SaveAgentModels(agentModels).catch(err => {
+                logEvent(`SaveAgentModels failed: ${String(err)}`, 'error');
+                console.error('SaveAgentModels failed:', err);
+            });
+        }, 400);
+        return () => clearTimeout(handle);
+    }, [agentModels, agentModelsLoaded]);
 
     useEffect(() => {
         logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -84,6 +119,7 @@ const UpgradeView: React.FC = () => {
     }, []);
 
     const handleModelChange = (agentId: string, model: string) => {
+        logEvent(`model change agentId=${agentId} value=${model}`);
         setAgentModels(prev => ({
             ...prev,
             [agentId]: model === 'default' ? '' : model
@@ -94,12 +130,14 @@ const UpgradeView: React.FC = () => {
         if (!task.trim()) return;
 
         if (availableModels.length === 0) {
+            logEvent(`start blocked: no models available task=${JSON.stringify(task)}`);
             setAlertTitle('No Models Found');
             setAlertMessage('Please download at least one model in the Settings menu before running the pipeline.');
             setAlertOpen(true);
             return;
         }
 
+        logEvent(`start pipeline task=${JSON.stringify(task)}`);
         setIsRunning(true);
         setLogs([]);
         setCurrentStage(0);
@@ -110,12 +148,14 @@ const UpgradeView: React.FC = () => {
     };
 
     const handleApprove = async () => {
+        logEvent('HITL approve');
         setAwaitingApproval(false);
         await ApproveHITL();
     };
 
     const handleReject = async () => {
         if (!feedbackText.trim()) return;
+        logEvent(`HITL reject feedbackLen=${feedbackText.length}`);
         setAwaitingApproval(false);
 
         setLogs(prev => [...prev, {
@@ -128,6 +168,32 @@ const UpgradeView: React.FC = () => {
         await RejectHITL(feedbackText);
     };
 
+    const handleTranslateSpec = async (index: number, specContent: string) => {
+        if (specTranslations[index]) {
+            const next = !showTranslation[index];
+            logEvent(`spec translate toggle index=${index} showTranslation=${next}`);
+            setShowTranslation(prev => ({ ...prev, [index]: next }));
+            return;
+        }
+        const translatorModel = agentModels['translator'] || agentModels['global'] || '';
+        logEvent(`spec translate request index=${index} model=${translatorModel || '(none)'} contentLen=${specContent.length}`);
+        setTranslatingSpecs(prev => ({ ...prev, [index]: true }));
+        try {
+            const translated = await TranslateText(translatorModel, '', specContent);
+            logEvent(`spec translate done index=${index} resultLen=${translated.length}`, 'state');
+            setSpecTranslations(prev => ({ ...prev, [index]: translated }));
+            setShowTranslation(prev => ({ ...prev, [index]: true }));
+        } catch (err) {
+            logEvent(`spec translate failed index=${index}: ${String(err)}`, 'error');
+            console.error('TranslateText failed:', err);
+            setAlertTitle('Translation Failed');
+            setAlertMessage(String(err));
+            setAlertOpen(true);
+        } finally {
+            setTranslatingSpecs(prev => ({ ...prev, [index]: false }));
+        }
+    };
+
     return (
         <div className="placeholder-view" style={{ width: '100%', maxWidth: '900px', margin: '0 auto', height: '100vh', display: 'flex', flexDirection: 'column' }}>
 
@@ -137,7 +203,10 @@ const UpgradeView: React.FC = () => {
                     <p style={{ color: '#706558', margin: 0 }}>Run the self-evolution pipeline to add new tools, agents, or pipeline stages.</p>
                 </div>
                 <button
-                    onClick={() => setShowConfig(!showConfig)}
+                    onClick={() => {
+                        logEvent(`crew setup toggle to=${!showConfig}`);
+                        setShowConfig(!showConfig);
+                    }}
                     className="primary-action-btn"
                     style={{ background: showConfig ? '#e6dfd3' : '#f1ede4', color: '#2b2722', border: '1px solid #dcd3c1', boxShadow: 'none' }}
                 >
@@ -211,26 +280,54 @@ const UpgradeView: React.FC = () => {
 
                                 {log.type === 'hitl' && log.data?.spec_content && (
                                     <div style={{ marginTop: '12px' }}>
-                                        <button
-                                            onClick={() => setExpandedSpecs(prev => ({ ...prev, [index]: !prev[index] }))}
-                                            style={{
-                                                background: 'transparent',
-                                                border: '1px solid #dcd3c1',
-                                                color: '#76695b',
-                                                padding: '6px 12px',
-                                                borderRadius: '6px',
-                                                cursor: 'pointer',
-                                                fontSize: '13px',
-                                                fontWeight: 600,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '6px'
-                                            }}
-                                        >
-                                            <span style={{ transform: expandedSpecs[index] ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>▶</span>
-                                            {expandedSpecs[index] ? 'Hide Design Spec' : 'View Design Spec'}
-                                            <span style={{ opacity: 0.6, fontSize: '11px', fontFamily: 'monospace' }}>{log.data.spec_path}</span>
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                            <button
+                                                onClick={() => setExpandedSpecs(prev => ({ ...prev, [index]: !prev[index] }))}
+                                                style={{
+                                                    background: 'transparent',
+                                                    border: '1px solid #dcd3c1',
+                                                    color: '#76695b',
+                                                    padding: '6px 12px',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '13px',
+                                                    fontWeight: 600,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px'
+                                                }}
+                                            >
+                                                <span style={{ transform: expandedSpecs[index] ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>▶</span>
+                                                {expandedSpecs[index] ? 'Hide Design Spec' : 'View Design Spec'}
+                                                <span style={{ opacity: 0.6, fontSize: '11px', fontFamily: 'monospace' }}>{log.data.spec_path}</span>
+                                            </button>
+                                            {expandedSpecs[index] && (
+                                                <button
+                                                    onClick={() => handleTranslateSpec(index, log.data!.spec_content)}
+                                                    disabled={translatingSpecs[index]}
+                                                    style={{
+                                                        background: showTranslation[index] ? '#76695b' : 'transparent',
+                                                        border: '1px solid #76695b',
+                                                        color: showTranslation[index] ? '#ffffff' : '#76695b',
+                                                        padding: '6px 12px',
+                                                        borderRadius: '6px',
+                                                        cursor: translatingSpecs[index] ? 'not-allowed' : 'pointer',
+                                                        fontSize: '13px',
+                                                        fontWeight: 600,
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px',
+                                                        opacity: translatingSpecs[index] ? 0.7 : 1
+                                                    }}
+                                                >
+                                                    {translatingSpecs[index]
+                                                        ? '⏳ Translating...'
+                                                        : specTranslations[index]
+                                                            ? (showTranslation[index] ? 'Show Original' : 'Show Translation')
+                                                            : '🌐 Translate'}
+                                                </button>
+                                            )}
+                                        </div>
                                         {expandedSpecs[index] && (
                                             <pre style={{
                                                 marginTop: '10px',
@@ -247,7 +344,9 @@ const UpgradeView: React.FC = () => {
                                                 overflowY: 'auto',
                                                 fontFamily: 'Menlo, Consolas, monospace'
                                             }}>
-                                                {log.data.spec_content}
+                                                {showTranslation[index] && specTranslations[index]
+                                                    ? specTranslations[index]
+                                                    : log.data.spec_content}
                                             </pre>
                                         )}
                                     </div>

@@ -38,8 +38,16 @@ export function GetOllamaPath() {
   return window['go']['main']['App']['GetOllamaPath']();
 }
 
+export function GetTranslationLanguage() {
+  return window['go']['main']['App']['GetTranslationLanguage']();
+}
+
 export function GetUpgradeHistory() {
   return window['go']['main']['App']['GetUpgradeHistory']();
+}
+
+export function LogClientEvent(arg1, arg2) {
+  return window['go']['main']['App']['LogClientEvent'](arg1, arg2);
 }
 
 export function RejectHITL(arg1) {
@@ -58,12 +66,20 @@ export function SaveAgentModels(arg1) {
   return window['go']['main']['App']['SaveAgentModels'](arg1);
 }
 
+export function SaveTranslationLanguage(arg1) {
+  return window['go']['main']['App']['SaveTranslationLanguage'](arg1);
+}
+
 export function SelectFolder() {
   return window['go']['main']['App']['SelectFolder']();
 }
 
 export function StartUpgradePipeline(arg1) {
   return window['go']['main']['App']['StartUpgradePipeline'](arg1);
+}
+
+export function TranslateText(arg1, arg2, arg3) {
+  return window['go']['main']['App']['TranslateText'](arg1, arg2, arg3);
 }
 
 export function UpdateOllamaPath(arg1) {

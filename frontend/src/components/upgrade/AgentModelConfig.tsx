@@ -13,7 +13,8 @@ const AGENTS = [
   { id: 'developer', name: 'Developer', role: 'Code Implementation', color: '#5c6b73' },
   { id: 'integrator', name: 'Integrator', role: 'Module Merge', color: '#83786c' },
   { id: 'critic', name: 'Critic & Verifier', role: 'All Feedback & Verification', color: '#717c66' },
-  { id: 'support', name: 'Support System', role: 'Watchdog & Translator', color: '#a67c6d' }
+  { id: 'watchdog', name: 'Watchdog', role: 'Failure Recovery', color: '#a67c6d' },
+  { id: 'translator', name: 'Translator', role: 'Message Localization', color: '#8a6f9c' }
 ];
 
 const AgentModelConfig: React.FC<AgentModelConfigProps> = ({ availableModels, agentModels, onModelChange }) => {

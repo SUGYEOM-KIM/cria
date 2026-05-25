@@ -104,6 +104,19 @@ func (a *App) shutdown(_ context.Context) {
 	}
 }
 
+func (a *App) LogClientEvent(level string, message string) {
+	switch level {
+	case "error":
+		logging.Errorf("[CLIENT] %s", message)
+	case "debug":
+		logging.Debugf("[CLIENT] %s", message)
+	case "state":
+		logging.Statef("[CLIENT] %s", message)
+	default:
+		logging.Userf("[CLIENT] %s", message)
+	}
+}
+
 func (a *App) GetOllamaPath() string {
 	return os.Getenv("OLLAMA_MODELS")
 }
@@ -194,6 +207,51 @@ func (a *App) SaveAgentModels(models map[string]string) bool {
 	logging.Userf("SaveAgentModels entries=%d", len(models))
 	saveAgentModels(models)
 	return true
+}
+
+func (a *App) GetTranslationLanguage() string {
+	lang := loadTranslationLanguage()
+	logging.Debugf("GetTranslationLanguage -> %q", lang)
+	return lang
+}
+
+func (a *App) SaveTranslationLanguage(lang string) bool {
+	logging.Userf("SaveTranslationLanguage lang=%q", lang)
+	saveTranslationLanguage(lang)
+	return true
+}
+
+func (a *App) TranslateText(model string, targetLang string, text string) string {
+	logging.Userf("TranslateText model=%s lang=%s textLen=%d", model, targetLang, len(text))
+
+	resolvedModel := model
+	if resolvedModel == "" {
+		agentModels := loadAgentModels()
+		if v, ok := agentModels["translator"]; ok && v != "" {
+			resolvedModel = v
+		} else if v, ok := agentModels["global"]; ok && v != "" {
+			resolvedModel = v
+		}
+	}
+	if resolvedModel == "" {
+		logging.Errorf("TranslateText: no model resolved")
+		return "Error: no translation model configured."
+	}
+
+	resolvedLang := targetLang
+	if resolvedLang == "" {
+		resolvedLang = loadTranslationLanguage()
+	}
+	if resolvedLang == "" {
+		logging.Errorf("TranslateText: no target language configured")
+		return "Error: no target language configured. Please set one in Settings."
+	}
+
+	systemPrompt := "You are a professional translator. Translate the user's text into " + resolvedLang + ". Preserve all Markdown formatting, code blocks, and structure exactly. Do not add explanations, notes, or commentary. Respond with only the translated text."
+	fullPrompt := systemPrompt + "\n\n" + text
+
+	logging.Statef("TranslateText calling model=%s lang=%s", resolvedModel, resolvedLang)
+	return llm.ChatWithOllama(resolvedModel, fullPrompt)
 }
 
 type appLLMCaller struct {

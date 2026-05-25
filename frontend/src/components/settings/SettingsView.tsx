@@ -3,7 +3,7 @@ import { RemoveModel } from '../../../wailsjs/go/main/App';
 import OllamaPathSection from './OllamaPathSection';
 import CustomModelPull from './CustomModelPull';
 import InstalledModels from './InstalledModels';
-// 🚀 기존 ConfirmModal 대신 공용 ConfirmDialog를 가져옵니다!
+import TranslationLanguageSection from './TranslationLanguageSection';
 import ConfirmDialog from '../common/ConfirmDialog'; 
 
 interface SettingsViewProps {
@@ -60,7 +60,12 @@ const SettingsView: React.FC<SettingsViewProps> = ({
     <div className="placeholder-view" style={{ width: '100%', maxWidth: '800px', margin: '0 auto' }}>
       <h2>Settings</h2>
       <div className="settings-separator"></div>
-      
+
+      <h3 style={{ fontSize: '18px', color: '#2b2722', marginBottom: '16px', textAlign: 'left' }}>Localization</h3>
+      <TranslationLanguageSection />
+
+      <div className="settings-separator"></div>
+
       <OllamaPathSection fetchModels={fetchModels} />
 
       <div style={{ width: '100%' }}>
@@ -80,7 +85,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({
         />
       </div>
 
-      {/* 🚀 공용 다이얼로그 적용 🚀 */}
       <ConfirmDialog
         isOpen={isModalOpen}
         title="Remove Model"

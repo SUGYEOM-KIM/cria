@@ -20,7 +20,11 @@ export function GetOllamaModels():Promise<Array<string>>;
 
 export function GetOllamaPath():Promise<string>;
 
+export function GetTranslationLanguage():Promise<string>;
+
 export function GetUpgradeHistory():Promise<Array<vcs.UpgradeHistory>>;
+
+export function LogClientEvent(arg1:string,arg2:string):Promise<void>;
 
 export function RejectHITL(arg1:string):Promise<void>;
 
@@ -30,8 +34,12 @@ export function RollbackUpgrade(arg1:string):Promise<void>;
 
 export function SaveAgentModels(arg1:Record<string, string>):Promise<boolean>;
 
+export function SaveTranslationLanguage(arg1:string):Promise<boolean>;
+
 export function SelectFolder():Promise<string>;
 
 export function StartUpgradePipeline(arg1:string):Promise<void>;
+
+export function TranslateText(arg1:string,arg2:string,arg3:string):Promise<string>;
 
 export function UpdateOllamaPath(arg1:string):Promise<boolean>;

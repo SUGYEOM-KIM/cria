@@ -6,8 +6,9 @@ import (
 )
 
 type Config struct {
-	OllamaModelsPath string            `json:"ollama_models_path"`
-	AgentModels      map[string]string `json:"agent_models,omitempty"`
+	OllamaModelsPath    string            `json:"ollama_models_path"`
+	AgentModels         map[string]string `json:"agent_models,omitempty"`
+	TranslationLanguage string            `json:"translation_language,omitempty"`
 }
 
 func loadConfig() Config {
@@ -53,5 +54,15 @@ func loadAgentModels() map[string]string {
 func saveAgentModels(models map[string]string) {
 	cfg := loadConfig()
 	cfg.AgentModels = models
+	saveConfig(cfg)
+}
+
+func loadTranslationLanguage() string {
+	return loadConfig().TranslationLanguage
+}
+
+func saveTranslationLanguage(lang string) {
+	cfg := loadConfig()
+	cfg.TranslationLanguage = lang
 	saveConfig(cfg)
 }
