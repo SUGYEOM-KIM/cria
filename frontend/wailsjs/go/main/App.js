@@ -26,10 +26,6 @@ export function GetActiveVersion() {
   return window['go']['main']['App']['GetActiveVersion']();
 }
 
-export function GetInitialCommit() {
-  return window['go']['main']['App']['GetInitialCommit']();
-}
-
 export function GetOllamaModels() {
   return window['go']['main']['App']['GetOllamaModels']();
 }

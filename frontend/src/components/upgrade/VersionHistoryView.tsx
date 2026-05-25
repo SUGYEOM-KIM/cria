@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GetUpgradeHistory, RollbackUpgrade, GetActiveCommit, ApplyUpgrade, GetInitialCommit } from '../../../wailsjs/go/main/App';
+import { GetUpgradeHistory, RollbackUpgrade, GetActiveCommit, ApplyUpgrade } from '../../../wailsjs/go/main/App';
 import ConfirmDialog from '../common/ConfirmDialog';
 import AlertDialog from '../common/AlertDialog';
 
@@ -19,9 +19,8 @@ interface Props {
 const VersionHistoryView: React.FC<Props> = ({ onApplySuccess }) => {
   const [history, setHistory] = useState<UpgradeHistory[]>([]);
   const [activeCommit, setActiveCommit] = useState<string>('');
-  const [initialCommit, setInitialCommit] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alertContent, setAlertContent] = useState({ title: '', message: '' });
@@ -32,9 +31,6 @@ const VersionHistoryView: React.FC<Props> = ({ onApplySuccess }) => {
     try {
       const currentActive = await GetActiveCommit();
       setActiveCommit(currentActive || '');
-
-      const firstCommit = await GetInitialCommit();
-      setInitialCommit(firstCommit || '');
 
       const data = await GetUpgradeHistory();
       setHistory(data || []);
@@ -92,42 +88,15 @@ const VersionHistoryView: React.FC<Props> = ({ onApplySuccess }) => {
     }
   };
 
-  const getFilteredHistory = () => {
-    if (!history || history.length === 0) return [];
-
-    const cleanActiveCommit = activeCommit.replace('-dirty', '').toLowerCase();
-    const cleanInitialCommit = initialCommit.replace('-dirty', '').toLowerCase();
-
-    let validRange = history;
-    if (cleanInitialCommit && cleanInitialCommit !== 'dev-mode-hash') {
-      const initialIdx = history.findIndex(item =>
-        item.hash.toLowerCase().startsWith(cleanInitialCommit) ||
-        cleanInitialCommit.startsWith(item.hash.toLowerCase())
-      );
-      if (initialIdx !== -1) {
-        validRange = history.slice(0, initialIdx + 1);
-      }
-    }
-
-    return validRange.filter((item) => {
-      const isCurrent = Boolean(
-        cleanActiveCommit && cleanActiveCommit !== 'dev-mode-hash' &&
-        (item.hash.toLowerCase().startsWith(cleanActiveCommit) || cleanActiveCommit.startsWith(item.hash.toLowerCase()))
-      );
-
-      const isInitial = Boolean(
-        cleanInitialCommit && cleanInitialCommit !== 'dev-mode-hash' &&
-        (item.hash.toLowerCase().startsWith(cleanInitialCommit) || cleanInitialCommit.startsWith(item.hash.toLowerCase()))
-      );
-
-      const isAiCommit = item.isAutoUpgrade || 
-                         (item.message && item.message.toLowerCase().includes('auto-upgrade'));
-
-      return isCurrent || isInitial || isAiCommit;
-    });
+  const isSameCommit = (a: string, b: string): boolean => {
+    if (!a || !b) return false;
+    const la = a.toLowerCase();
+    const lb = b.toLowerCase();
+    return la.startsWith(lb) || lb.startsWith(la);
   };
 
-  const visibleHistory = getFilteredHistory();
+  const cleanActiveCommit = activeCommit.replace('-dirty', '').toLowerCase();
+  const oldestHash = history.length > 0 ? history[history.length - 1].hash : '';
 
   return (
     <div style={{ padding: '30px', color: '#2b2722', width: '100%', boxSizing: 'border-box' }}>
@@ -159,46 +128,33 @@ const VersionHistoryView: React.FC<Props> = ({ onApplySuccess }) => {
       <div style={{ background: '#fff', borderRadius: '8px', border: '1px solid #e1dacb', width: '100%', overflow: 'hidden' }}>
         {isLoading ? (
           <div style={{ padding: '30px', textAlign: 'center' }}>Loading...</div>
-        ) : visibleHistory.length === 0 ? (
+        ) : history.length === 0 ? (
           <div style={{ padding: '30px', textAlign: 'center' }}>No history found.</div>
         ) : (
-          visibleHistory.map((item, idx) => {
-            const cleanActiveCommit = activeCommit.replace('-dirty', '').toLowerCase();
-            const cleanInitialCommit = initialCommit.replace('-dirty', '').toLowerCase();
-            
-            const isCurrent = Boolean(
-              cleanActiveCommit && cleanActiveCommit !== 'dev-mode-hash' &&
-              (item.hash.toLowerCase().startsWith(cleanActiveCommit) || cleanActiveCommit.startsWith(item.hash.toLowerCase()))
-            );
-
-            const isInitial = Boolean(
-              item.hash && cleanInitialCommit && cleanInitialCommit !== 'dev-mode-hash' && (
-                cleanInitialCommit.startsWith(item.hash.toLowerCase()) ||
-                item.hash.toLowerCase().startsWith(cleanInitialCommit)
-              )
-            );
-            
-            const canUndo = visibleHistory.length > 0 && visibleHistory[0].hash === item.hash && !isCurrent && !isInitial;
+          history.map((item, idx) => {
+            const isCurrent = isSameCommit(item.hash, cleanActiveCommit);
+            const isOldest = item.hash === oldestHash;
+            const canUndo = idx === 0 && !isCurrent && !isOldest;
 
             return (
-              <div key={item.hash} style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                padding: '16px 20px', 
-                borderBottom: idx === visibleHistory.length - 1 ? 'none' : '1px solid #e1dacb', 
+              <div key={item.hash} style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '16px 20px',
+                borderBottom: idx === history.length - 1 ? 'none' : '1px solid #e1dacb',
                 background: isCurrent ? '#fdfbf7' : 'transparent'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
-                  <span style={{ 
-                    fontSize: '12px', 
-                    color: isCurrent ? '#bd9313' : '#1e8e3e', 
-                    background: isCurrent ? '#fef7e0' : '#e6f4ea', 
-                    padding: '4px 8px', 
-                    borderRadius: '4px', 
-                    fontWeight: 'bold', 
-                    minWidth: '60px', 
-                    textAlign: 'center' 
+                  <span style={{
+                    fontSize: '12px',
+                    color: isCurrent ? '#bd9313' : '#1e8e3e',
+                    background: isCurrent ? '#fef7e0' : '#e6f4ea',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontWeight: 'bold',
+                    minWidth: '60px',
+                    textAlign: 'center'
                   }}>
                     {item.version || 'No Tag'}
                   </span>
@@ -219,7 +175,7 @@ const VersionHistoryView: React.FC<Props> = ({ onApplySuccess }) => {
                     {item.date} {item.time}
                   </span>
                 </div>
-                
+
                 <div style={{ display: 'flex', gap: '8px', marginLeft: '20px' }}>
                   {isCurrent ? (
                     <button disabled style={{ background: '#f1ede4', border: '1px solid #e1dacb', color: '#a0968a', padding: '6px 16px', borderRadius: '4px', fontSize: '13px', cursor: 'not-allowed' }}>

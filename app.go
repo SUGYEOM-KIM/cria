@@ -21,7 +21,6 @@ import (
 
 //go:embed source.zip
 var sourceZip []byte
-var InitialCommit string = ""
 var CurrentCommit string = ""
 var CurrentVersion string = "v0.0.0"
 
@@ -55,14 +54,11 @@ func (a *App) startup(ctx context.Context) {
 		cwdHead = strings.TrimSpace(string(out))
 	}
 
-	if InitialCommit == "" {
-		InitialCommit = cwdHead
-	}
 	if CurrentCommit == "" {
 		CurrentCommit = cwdHead
 	}
 
-	logging.Userf("app.startup InitialCommit=%s CurrentCommit=%s CurrentVersion=%s", InitialCommit, CurrentCommit, CurrentVersion)
+	logging.Userf("app.startup CurrentCommit=%s CurrentVersion=%s", CurrentCommit, CurrentVersion)
 
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
 	if _, err := os.Stat(filepath.Join(workspacePath, ".git")); os.IsNotExist(err) {
@@ -247,11 +243,6 @@ func (a *App) GetUpgradeHistory() []vcs.UpgradeHistory {
 	return history
 }
 
-func (a *App) GetInitialCommit() string {
-	logging.Debugf("GetInitialCommit -> %s", InitialCommit)
-	return InitialCommit
-}
-
 func (a *App) GetActiveCommit() string {
 	logging.Debugf("GetActiveCommit -> %s", CurrentCommit)
 	return CurrentCommit
@@ -290,7 +281,7 @@ func (a *App) ApplyUpgrade(hash string, version string) error {
 		return fmt.Errorf("checkout failed: %v", err)
 	}
 
-	ldflags := fmt.Sprintf("-X main.InitialCommit=%s -X main.CurrentCommit=%s -X main.CurrentVersion=%s", InitialCommit, hash, version)
+	ldflags := fmt.Sprintf("-X main.CurrentCommit=%s -X main.CurrentVersion=%s", hash, version)
 	logging.Statef("ApplyUpgrade running wails build with ldflags=%s", ldflags)
 
 	buildCmd := exec.Command("wails", "build", "-clean", "-ldflags", ldflags, "-o", "cria-upgrade.exe")
