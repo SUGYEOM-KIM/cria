@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"cria/internal/agent"
 	"cria/internal/llm"
 	"cria/internal/logging"
 	"cria/internal/ollama"
@@ -178,23 +179,34 @@ func (a *App) RemoveModel(modelName string) string {
 
 func (a *App) StartUpgradePipeline(task string) {
 	logging.Userf("StartUpgradePipeline task=%q", task)
-	cwd, err := os.Getwd()
-	if err != nil {
-		cwd = "."
-		logging.Errorf("os.Getwd: %v (using .)", err)
-	}
 
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
-	logging.Statef("workspace path: %s (cwd=%s)", workspacePath, cwd)
+	logging.Statef("setting up workspace from embedded zip: %s", workspacePath)
 
-	err = vcs.SetupShadowWorkspace(cwd, workspacePath)
+	err := vcs.SetupWorkspaceFromZip(sourceZip, workspacePath)
 	if err != nil {
-		logging.Errorf("SetupShadowWorkspace: %v", err)
+		logging.Errorf("SetupWorkspaceFromZip: %v", err)
 		return
 	}
 	logging.Statef("workspace ready, launching orchestrator")
 
-	orc := pipeline.NewOrchestrator(a.ctx, workspacePath)
+	registry := pipeline.AgentRegistry{
+		Architect:         agent.NewMockArchitect(),
+		DesignCritic:      agent.NewMockDesignCritic(),
+		UnitPlanner:       agent.NewMockGeneric("Unit Planner", "📅"),
+		PlanCritic:        agent.NewMockGeneric("Plan Critic", "📋"),
+		Developer:         agent.NewMockDeveloper(),
+		CodeReviewer:      agent.NewMockCodeReviewer(),
+		Tester:            agent.NewMockGeneric("Tester", "🧪"),
+		TestVerifier:      agent.NewMockGeneric("Test Verifier", "✅"),
+		Integrator:        agent.NewMockGeneric("Integrator", "🧩"),
+		IntegrationCritic: agent.NewMockGeneric("Integration Critic", "⚖️"),
+		FinalVerifier:     agent.NewMockFinalVerifier(),
+		Watchdog:          agent.NewMockWatchdog(),
+		Translator:        agent.NewMockTranslator(),
+	}
+
+	orc := pipeline.NewOrchestrator(a.ctx, workspacePath, registry)
 	go orc.RunMock(task, a.hitlChan)
 }
 
