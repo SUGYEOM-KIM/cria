@@ -2,8 +2,11 @@ package pipeline
 
 import (
 	"context"
+	"cria/internal/logging"
 	"cria/internal/vcs"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -56,11 +59,25 @@ func (o *Orchestrator) RunMock(task string, hitlChan chan HITLResponse) {
 			resArch, _ := o.agents.Architect.Run(o.ctx, agentInput, o.Emit)
 			agentInput.Design = resArch.(*DesignResult)
 
+			if err := o.writeDesignSpec(agentInput.Design); err != nil {
+				logging.Errorf("orchestrator writeDesignSpec: %v", err)
+				o.Emit(PipelineEvent{Type: "toast", Icon: "❌", Content: "Failed to write design spec"})
+				return
+			}
+			logging.Statef("orchestrator design spec written path=%s len=%d", agentInput.Design.SpecPath, len(agentInput.Design.SpecContent))
+
 			resCritic, _ := o.agents.DesignCritic.Run(o.ctx, agentInput, o.Emit)
 			approved := resCritic.(bool)
 
 			if approved {
-				o.Emit(PipelineEvent{Type: "hitl", Content: "Design draft complete. Please review."})
+				o.Emit(PipelineEvent{
+					Type:    "hitl",
+					Content: "Design draft complete. Please review.",
+					Data: map[string]string{
+						"spec_path":    agentInput.Design.SpecPath,
+						"spec_content": agentInput.Design.SpecContent,
+					},
+				})
 				response := <-hitlChan
 
 				if response.Approved {
@@ -134,6 +151,20 @@ func (o *Orchestrator) RunMock(task string, hitlChan chan HITLResponse) {
 	}
 
 	o.Emit(PipelineEvent{Type: "toast", Icon: "❌", Content: "Global Timeout Reached. System Abort."})
+}
+
+func (o *Orchestrator) writeDesignSpec(d *DesignResult) error {
+	if d == nil || d.SpecPath == "" {
+		return fmt.Errorf("design result missing path")
+	}
+	abs := filepath.Join(o.workspacePath, d.SpecPath)
+	if err := os.MkdirAll(filepath.Dir(abs), 0755); err != nil {
+		return fmt.Errorf("mkdir %s: %w", filepath.Dir(abs), err)
+	}
+	if err := os.WriteFile(abs, []byte(d.SpecContent), 0644); err != nil {
+		return fmt.Errorf("write %s: %w", abs, err)
+	}
+	return nil
 }
 
 func bumpVersion(current string, bumpType string) string {

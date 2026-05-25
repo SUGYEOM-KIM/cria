@@ -11,6 +11,7 @@ interface PipelineEvent {
     content?: string;
     action?: string;
     params?: any;
+    data?: Record<string, string>;
 }
 
 const STAGES = ['DESIGN', 'IMPLEMENTATION', 'INTEGRATION', 'COMPLETE'];
@@ -28,6 +29,7 @@ const UpgradeView: React.FC = () => {
 
     const [feedbackText, setFeedbackText] = useState('');
     const [showRejectForm, setShowRejectForm] = useState(false);
+    const [expandedSpecs, setExpandedSpecs] = useState<Record<number, boolean>>({});
 
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertTitle, setAlertTitle] = useState('');
@@ -206,6 +208,50 @@ const UpgradeView: React.FC = () => {
                                 <div style={{ fontSize: '14px', lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                                     {log.content}
                                 </div>
+
+                                {log.type === 'hitl' && log.data?.spec_content && (
+                                    <div style={{ marginTop: '12px' }}>
+                                        <button
+                                            onClick={() => setExpandedSpecs(prev => ({ ...prev, [index]: !prev[index] }))}
+                                            style={{
+                                                background: 'transparent',
+                                                border: '1px solid #dcd3c1',
+                                                color: '#76695b',
+                                                padding: '6px 12px',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                fontSize: '13px',
+                                                fontWeight: 600,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px'
+                                            }}
+                                        >
+                                            <span style={{ transform: expandedSpecs[index] ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}>▶</span>
+                                            {expandedSpecs[index] ? 'Hide Design Spec' : 'View Design Spec'}
+                                            <span style={{ opacity: 0.6, fontSize: '11px', fontFamily: 'monospace' }}>{log.data.spec_path}</span>
+                                        </button>
+                                        {expandedSpecs[index] && (
+                                            <pre style={{
+                                                marginTop: '10px',
+                                                padding: '14px',
+                                                background: '#f9f6f0',
+                                                border: '1px solid #e1dacb',
+                                                borderRadius: '8px',
+                                                fontSize: '12px',
+                                                lineHeight: '1.6',
+                                                color: '#2b2722',
+                                                whiteSpace: 'pre-wrap',
+                                                wordBreak: 'break-word',
+                                                maxHeight: '420px',
+                                                overflowY: 'auto',
+                                                fontFamily: 'Menlo, Consolas, monospace'
+                                            }}>
+                                                {log.data.spec_content}
+                                            </pre>
+                                        )}
+                                    </div>
+                                )}
 
                                 {log.type === 'hitl' && awaitingApproval && (
                                     <div style={{ marginTop: '16px', borderTop: '1px solid #e1dacb', paddingTop: '16px' }}>

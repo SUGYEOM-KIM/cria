@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"cria/internal/logging"
 	"cria/internal/pipeline"
 	"fmt"
 	"time"
@@ -23,6 +24,7 @@ func (a *LLMArchitect) Name() string { return "Global Architect" }
 func (a *LLMArchitect) Icon() string { return "📐" }
 
 func (a *LLMArchitect) Run(ctx context.Context, in pipeline.AgentInput, emit func(pipeline.PipelineEvent)) (any, error) {
+	logging.Statef("LLMArchitect.Run start model=%s task=%q feedback=%q", a.model, in.Task, in.Feedback)
 	emit(pipeline.PipelineEvent{Type: "status", Content: "ARCHITECT IS THINKING..."})
 
 	systemPrompt := `You are the Global Architect of an AI development team. 
@@ -32,27 +34,34 @@ Respond ONLY with a valid Markdown document containing the design specs.`
 	userPrompt := fmt.Sprintf("Task: %s\nWorkspace: %s\n\nPlease provide the design_spec.md content.", in.Task, in.Workspace)
 
 	if in.Feedback != "" {
-		emit(pipeline.PipelineEvent{Type: "system_msg", Icon: a.Icon(), Role: a.Name(), Content: "피드백을 반영하여 재설계합니다: " + in.Feedback})
+		logging.Statef("LLMArchitect revising based on feedback (len=%d)", len(in.Feedback))
+		emit(pipeline.PipelineEvent{Type: "system_msg", Icon: a.Icon(), Role: a.Name(), Content: "Revising the design based on your feedback: " + in.Feedback})
 		userPrompt += fmt.Sprintf("\n\n[REVISION REQUIRED]: %s", in.Feedback)
 	} else {
-		emit(pipeline.PipelineEvent{Type: "system_msg", Icon: a.Icon(), Role: a.Name(), Content: "요구사항 분석 및 아키텍처 설계를 시작합니다..."})
+		logging.Statef("LLMArchitect drafting initial design")
+		emit(pipeline.PipelineEvent{Type: "system_msg", Icon: a.Icon(), Role: a.Name(), Content: "Analyzing requirements and drafting the architecture..."})
 	}
+
+	logging.Debugf("LLMArchitect prompt sizes: system=%d user=%d", len(systemPrompt), len(userPrompt))
 
 	start := time.Now()
 	response, err := a.llm.Chat(a.model, systemPrompt, userPrompt)
+	elapsed := time.Since(start)
 	if err != nil {
+		logging.Errorf("LLMArchitect chat failed after %v: %v", elapsed.Round(time.Millisecond), err)
 		return nil, fmt.Errorf("llm chat failed: %w", err)
 	}
-	elapsed := time.Since(start)
+	logging.Statef("LLMArchitect chat completed in %v responseLen=%d", elapsed.Round(time.Millisecond), len(response))
 
 	emit(pipeline.PipelineEvent{
 		Type:    "system_msg",
 		Icon:    a.Icon(),
 		Role:    a.Name(),
 		Action:  "WRITE",
-		Content: fmt.Sprintf("설계 완료 (소요시간: %v). specs/design_spec.md 문서를 생성했습니다.", elapsed.Round(time.Second)),
+		Content: fmt.Sprintf("Design complete (took %v). Generated specs/design_spec.md.", elapsed.Round(time.Second)),
 	})
 
+	logging.Statef("LLMArchitect.Run end")
 	return &pipeline.DesignResult{
 		SpecPath:    "specs/design_spec.md",
 		SpecContent: response,

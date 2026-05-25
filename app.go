@@ -184,6 +184,18 @@ func (a *App) RemoveModel(modelName string) string {
 	return llm.RemoveOllamaModel(modelName)
 }
 
+func (a *App) GetAgentModels() map[string]string {
+	models := loadAgentModels()
+	logging.Debugf("GetAgentModels -> %d entries", len(models))
+	return models
+}
+
+func (a *App) SaveAgentModels(models map[string]string) bool {
+	logging.Userf("SaveAgentModels entries=%d", len(models))
+	saveAgentModels(models)
+	return true
+}
+
 type appLLMCaller struct {
 	app *App
 }

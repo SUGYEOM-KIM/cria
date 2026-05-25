@@ -1,11 +1,12 @@
 package pipeline
 
 type PipelineEvent struct {
-	Type    string `json:"type"`
-	Icon    string `json:"icon,omitempty"`
-	Role    string `json:"role,omitempty"`
-	Action  string `json:"action,omitempty"`
-	Content string `json:"content"`
+	Type    string            `json:"type"`
+	Icon    string            `json:"icon,omitempty"`
+	Role    string            `json:"role,omitempty"`
+	Action  string            `json:"action,omitempty"`
+	Content string            `json:"content"`
+	Data    map[string]string `json:"data,omitempty"`
 }
 
 type HITLResponse struct {

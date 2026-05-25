@@ -26,6 +26,10 @@ export function GetActiveVersion() {
   return window['go']['main']['App']['GetActiveVersion']();
 }
 
+export function GetAgentModels() {
+  return window['go']['main']['App']['GetAgentModels']();
+}
+
 export function GetOllamaModels() {
   return window['go']['main']['App']['GetOllamaModels']();
 }
@@ -48,6 +52,10 @@ export function RemoveModel(arg1) {
 
 export function RollbackUpgrade(arg1) {
   return window['go']['main']['App']['RollbackUpgrade'](arg1);
+}
+
+export function SaveAgentModels(arg1) {
+  return window['go']['main']['App']['SaveAgentModels'](arg1);
 }
 
 export function SelectFolder() {

@@ -14,6 +14,8 @@ export function GetActiveCommit():Promise<string>;
 
 export function GetActiveVersion():Promise<string>;
 
+export function GetAgentModels():Promise<Record<string, string>>;
+
 export function GetOllamaModels():Promise<Array<string>>;
 
 export function GetOllamaPath():Promise<string>;
@@ -25,6 +27,8 @@ export function RejectHITL(arg1:string):Promise<void>;
 export function RemoveModel(arg1:string):Promise<string>;
 
 export function RollbackUpgrade(arg1:string):Promise<void>;
+
+export function SaveAgentModels(arg1:Record<string, string>):Promise<boolean>;
 
 export function SelectFolder():Promise<string>;
 

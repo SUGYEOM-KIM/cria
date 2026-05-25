@@ -6,30 +6,52 @@ import (
 )
 
 type Config struct {
-	OllamaModelsPath string `json:"ollama_models_path"`
+	OllamaModelsPath string            `json:"ollama_models_path"`
+	AgentModels      map[string]string `json:"agent_models,omitempty"`
 }
 
-func loadConfigPath() string {
+func loadConfig() Config {
+	var cfg Config
 	file, err := os.Open("config.json")
 	if err != nil {
-		return ""
+		return cfg
 	}
 	defer file.Close()
-
-	var cfg Config
-	if err := json.NewDecoder(file).Decode(&cfg); err != nil {
-		return ""
-	}
-	return cfg.OllamaModelsPath
+	_ = json.NewDecoder(file).Decode(&cfg)
+	return cfg
 }
 
-func saveConfigPath(path string) {
-	cfg := Config{OllamaModelsPath: path}
+func saveConfig(cfg Config) {
 	file, err := os.Create("config.json")
 	if err != nil {
 		return
 	}
 	defer file.Close()
+	enc := json.NewEncoder(file)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(cfg)
+}
 
-	_ = json.NewEncoder(file).Encode(cfg)
+func loadConfigPath() string {
+	return loadConfig().OllamaModelsPath
+}
+
+func saveConfigPath(path string) {
+	cfg := loadConfig()
+	cfg.OllamaModelsPath = path
+	saveConfig(cfg)
+}
+
+func loadAgentModels() map[string]string {
+	models := loadConfig().AgentModels
+	if models == nil {
+		return map[string]string{}
+	}
+	return models
+}
+
+func saveAgentModels(models map[string]string) {
+	cfg := loadConfig()
+	cfg.AgentModels = models
+	saveConfig(cfg)
 }
