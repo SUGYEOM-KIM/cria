@@ -312,6 +312,11 @@ func (a *App) ApplyUpgrade(hash string, version string) error {
 	}
 	logging.Statef("new binary started pid=%d, exiting current", newCmd.Process.Pid)
 
+	if a.serverCmd != nil && a.serverCmd.Process != nil {
+		_ = a.serverCmd.Process.Kill()
+		logging.Statef("ollama runner killed for upgrade restart")
+	}
+
 	go func() {
 		os.Exit(0)
 	}()
