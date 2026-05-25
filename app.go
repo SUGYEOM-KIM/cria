@@ -40,6 +40,9 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
 	runtime.WindowShow(ctx)
+	runtime.WindowUnminimise(ctx)
+	runtime.WindowSetAlwaysOnTop(ctx, true)
+	runtime.WindowSetAlwaysOnTop(ctx, false)
 
 	workspacePath := filepath.Join(os.TempDir(), "cria_workspace")
 	if _, err := os.Stat(filepath.Join(workspacePath, ".git")); os.IsNotExist(err) {
